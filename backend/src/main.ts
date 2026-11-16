@@ -37,7 +37,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
-  const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+  const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? (process.env.VERCEL ? 1 : 0));
   if (Number.isInteger(trustedProxyHops) && trustedProxyHops > 0) app.set('trust proxy', trustedProxyHops);
   app.setGlobalPrefix('api', { exclude: [uploadedImageRoute] });
   app.use('/api', (_req: Request, res: Response, next: NextFunction) => {

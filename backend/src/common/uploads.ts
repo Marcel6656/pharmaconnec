@@ -4,7 +4,9 @@ import { mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
 import { join, resolve } from 'path';
 
-export const UPLOAD_ROOT = resolve(process.env.UPLOAD_DIR || './uploads');
+export const UPLOAD_ROOT = resolve(
+  process.env.UPLOAD_DIR || (process.env.VERCEL ? '/tmp/uploads' : './uploads'),
+);
 /** Images de produits et couvertures autorisées individuellement par le serveur */
 export const PUBLIC_UPLOAD_DIR = join(UPLOAD_ROOT, 'public');
 /** Justificatifs administratifs : jamais exposés statiquement */
