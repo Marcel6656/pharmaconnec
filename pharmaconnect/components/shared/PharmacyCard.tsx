@@ -68,7 +68,7 @@ export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCar
 
         {allBadges.length > 0 && (
           <div className="badge-row">
-            {allBadges.map(b => (
+            {allBadges.slice(0, 2).map(b => (
               <span className={`badge-label ${b.color}`} key={b.id}>
                 <BadgeGlyph icon={b.icon} size={11} />
                 {b.name}
@@ -83,7 +83,7 @@ export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCar
               href={`tel:${pharmacy.phone}`}
               className="cg-phone-chip"
               onClick={e => e.stopPropagation()}
-              title="Appeler l’officine"
+              title={`Appeler ${pharmacy.phone}`}
             >
               <Phone size={14} />
               <span>{pharmacy.phone}</span>
@@ -95,10 +95,10 @@ export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCar
               rel="noreferrer"
               className="cg-whatsapp-chip"
               onClick={e => e.stopPropagation()}
-              title="Appeler ou contacter sur WhatsApp"
+              title="Contacter sur WhatsApp"
+              aria-label="Contacter sur WhatsApp"
             >
               <ModernWhatsAppIcon size={15} />
-              <span>WhatsApp</span>
             </a>
           </div>
 
@@ -110,7 +110,7 @@ export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCar
               onOpen();
             }}
           >
-            <span>Voir stocks</span>
+            <span>Voir fiche</span>
             <ArrowRight size={14} className="cg-arrow-hover" />
           </button>
         </div>

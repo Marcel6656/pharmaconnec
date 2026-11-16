@@ -19312,3 +19312,283 @@ a:focus-visible {
   font-size: 11.5px;
   color: var(--muted, #5c736d);
 }
+
+/* ========================================================================
+   ACCUEIL ÉPURÉ & RESPONSIVE GLOBAL
+   ======================================================================== */
+html,
+body,
+.site-root,
+.public-main {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.pc-home-clean {
+  width: 100%;
+}
+
+.pc-clean-hero {
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 3vw, 28px) clamp(24px, 4vw, 40px);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(79, 168, 141, 0.14), transparent 46%),
+    radial-gradient(circle at 88% 12%, rgba(28, 79, 138, 0.08), transparent 44%),
+    linear-gradient(180deg, #f1f9f6 0%, #ffffff 100%);
+  border-bottom: 1px solid #e2efe9;
+}
+
+.pc-clean-hero-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pc-clean-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cfe5dc;
+  color: var(--pine, #14362e);
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.pc-clean-hero h1 {
+  margin: 0 auto 10px;
+  max-width: 780px;
+  font: 800 clamp(24px, 3.8vw, 42px) / 1.15 Manrope, sans-serif;
+  color: var(--pine, #14362e);
+  letter-spacing: -0.02em;
+}
+
+.pc-clean-hero p {
+  margin: 0 auto 22px;
+  max-width: 640px;
+  font-size: clamp(14px, 1.6vw, 16px);
+  line-height: 1.55;
+  color: var(--muted, #5c736d);
+}
+
+.pc-clean-search-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(175px, 220px) auto;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #cfe5dc;
+  box-shadow: 0 14px 34px rgba(20, 54, 46, 0.08);
+  align-items: center;
+}
+
+.pc-clean-search-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 12px;
+  color: var(--muted, #5c736d);
+}
+
+.pc-clean-search-input input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 14.5px;
+  color: var(--pine, #14362e);
+}
+
+.pc-clean-search-bar select {
+  height: 42px;
+  border: 1px solid #dce9e3;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #f8fcfa;
+  color: var(--pine, #14362e);
+  font-size: 13.5px;
+  font-weight: 600;
+  min-width: 0;
+  width: 100%;
+}
+
+.pc-clean-search-submit {
+  height: 42px;
+  white-space: nowrap;
+}
+
+.pc-clean-hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pc-clean-pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #d5e6df;
+  background: #ffffff;
+  color: var(--pine, #14362e);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+}
+
+.pc-clean-pill-link:hover {
+  border-color: var(--mint, #4fa88d);
+  background: #f2faf7;
+  transform: translateY(-1px);
+}
+
+.pc-clean-pill-link.is-subtle {
+  background: #f5faf8;
+}
+
+.pc-home-section {
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-top: clamp(26px, 3.6vw, 40px);
+  padding-bottom: clamp(16px, 2.5vw, 24px);
+}
+
+.pc-clean-cat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pc-clean-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid #d8e9e2;
+  background: #ffffff;
+  color: var(--pine, #14362e);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.pc-clean-cat-chip:hover {
+  border-color: var(--mint, #4fa88d);
+  background: #f1faf6;
+}
+
+.pc-clean-empty-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  border: 1px dashed #c8dfd5;
+  background: #f8fcfa;
+  color: var(--pine, #14362e);
+}
+
+.pc-clean-empty-box > div {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.pc-clean-empty-box p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--muted, #5c736d);
+}
+
+.pc-filter-active {
+  background: #e8f7f1 !important;
+  border-color: var(--mint, #4fa88d) !important;
+  color: var(--pine, #14362e) !important;
+}
+
+.pc-price-input {
+  width: 135px;
+  max-width: 100%;
+}
+
+/* Responsive tablettes & mobiles */
+@media (max-width: 960px) {
+  .pc-clean-search-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-clean-search-submit {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .directory-tools.pc-products-tools,
+  .directory-tools.pc-pharmacies-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .directory-tools.pc-products-tools .search-control,
+  .directory-tools.pc-pharmacies-tools .search-control {
+    grid-column: 1 / -1;
+  }
+
+  .pc-price-input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .pc-clean-hero {
+    padding: 22px 14px 20px;
+    text-align: left;
+  }
+
+  .pc-clean-hero-inner {
+    text-align: left;
+  }
+
+  .pc-clean-hero-links {
+    justify-content: flex-start;
+  }
+
+  .pc-clean-pill-link {
+    font-size: 12.5px;
+    padding: 7px 12px;
+  }
+
+  .directory-tools.pc-products-tools,
+  .directory-tools.pc-pharmacies-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .cg-category-pill-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cg-category-pill-bar .cg-cat-pill {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .mc-card-actions {
+    flex-wrap: wrap;
+  }
+}
