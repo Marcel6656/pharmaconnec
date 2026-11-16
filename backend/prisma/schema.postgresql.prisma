@@ -1,0 +1,333 @@
+// Schéma de données PharmaConnect — reprend fidèlement le modèle AppData du frontend
+// (lib/shared.tsx) en le normalisant pour PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Rôles : ADMIN | PHARMACIST | VISITOR — Fournisseur : email | google
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String?
+  name         String
+  role         String    @default("VISITOR")
+  provider     String    @default("email")
+  googleSub    String?   @unique
+  phone        String?
+  active       Boolean   @default(true)
+  tokenVersion Int       @default(1)
+  metadata     Json?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  pharmacies Pharmacy[]
+  messages   Message[]  @relation("VisitorMessages")
+}
+
+/// Statuts : En attente | En vérification | Validée | Refusée | Suspendue | Abonnement expiré
+model Pharmacy {
+  id                 Int       @id @default(autoincrement())
+  ownerId            Int?
+  owner              User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  name               String
+  city               String
+  area               String    @default("")
+  address            String    @default("")
+  phone              String
+  email              String
+  license            String
+  responsible        String    @default("")
+  lat                Float?
+  lng                Float?
+  openingHours     String?
+  openingHoursJson Json?
+  metadata         Json?
+  status           String    @default("En attente")
+  subscription       String    @default("Basic")
+  trialEndsAt        DateTime?
+  subscriptionEndsAt DateTime?
+  coverImage         String?
+  documentsNote      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  products         Product[]
+  badges           PharmacyBadge[]
+  messages         Message[]
+  payments         Payment[]
+  notices          Notice[]
+  reports          Report[]
+  documents        PharmacyDocument[]
+  customCategories CustomCategory[]
+  preferences      PharmacyPreferences?
+
+  @@index([status])
+  @@index([city])
+}
+
+/// Justificatifs administratifs (stockage privé, jamais servis publiquement)
+model PharmacyDocument {
+  id         Int      @id @default(autoincrement())
+  pharmacyId Int
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  fileName   String
+  storedName String
+  mimeType   String
+  size       Int
+  sha256     String?
+  content    Bytes?
+  createdAt  DateTime @default(now())
+}
+
+model Badge {
+  id          Int             @id @default(autoincrement())
+  /// "verified" = badge réservé « Pharmacie vérifiée », non supprimable
+  key         String?         @unique
+  name        String
+  description String          @default("")
+  color       String          @default("mint")
+  icon        String          @default("shield")
+  visible     Boolean         @default(true)
+  expiryDays  Int?
+  system      Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  pharmacies  PharmacyBadge[]
+}
+
+model PharmacyBadge {
+  pharmacyId Int
+  badgeId    Int
+  assignedAt DateTime @default(now())
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  badge      Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@id([pharmacyId, badgeId])
+}
+
+/// Statuts : Brouillon | En attente | Publié | À corriger | Refusé | Masqué | Suspendu | Archivé
+model Product {
+  id             Int             @id @default(autoincrement())
+  pharmacyId     Int
+  pharmacy       Pharmacy        @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  name           String
+  category       String
+  brand          String          @default("")
+  code           String          @default("")
+  price          Float
+  stock          Int
+  status         String          @default("Brouillon")
+  note           String?
+  description    String          @default("")
+  attributes     Json?
+  imageUrl       String?
+  /// Date de dernière déclaration prix/stock (sert au seuil de fraîcheur)
+  stockUpdatedAt DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  stockHistory   StockSnapshot[]
+  reports        Report[]
+
+  @@index([status])
+  @@index([pharmacyId])
+  @@index([category])
+}
+
+model StockSnapshot {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price     Float
+  stock     Int
+  createdAt DateTime @default(now())
+}
+
+model PlatformCategory {
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  position Int    @default(0)
+}
+
+model CustomCategory {
+  id         Int      @id @default(autoincrement())
+  pharmacyId Int
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  name       String
+
+  @@unique([pharmacyId, name])
+}
+
+/// direction : visitor | pharmacy — threadId nul = message initial d'un fil
+model Message {
+  id           Int       @id @default(autoincrement())
+  pharmacyId   Int
+  pharmacy     Pharmacy  @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  threadId     Int?
+  thread       Message?  @relation("Thread", fields: [threadId], references: [id], onDelete: Cascade)
+  replies      Message[] @relation("Thread")
+  visitorId    Int?
+  visitor      User?     @relation("VisitorMessages", fields: [visitorId], references: [id], onDelete: SetNull)
+  visitorEmail String?
+  productId    Int?
+  sender       String
+  phone        String
+  subject      String
+  body         String
+  read         Boolean   @default(false)
+  direction    String
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+
+  @@index([pharmacyId])
+  @@index([threadId])
+  @@index([visitorId])
+}
+
+model Plan {
+  name        String   @id
+  monthly     Float
+  quarterly   Float
+  yearly      Float
+  description String
+  /// Tableau JSON sérialisé de fonctionnalités (string[])
+  features    String
+  metadata    Json?
+  position    Int      @default(0)
+}
+
+/// Statuts : En attente | Confirmé | Échoué — période : Mensuel | Trimestriel | Annuel
+model Payment {
+  id          Int       @id @default(autoincrement())
+  pharmacyId  Int
+  pharmacy    Pharmacy  @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  plan        String
+  amount      Float
+  period      String
+  status      String    @default("En attente")
+  method      String    @default("Mobile Money")
+  provider    String?
+  payerPhone  String?
+  invoiceRef  String    @unique
+  externalRef String?   @unique
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+}
+
+/// kind : info | success | warning
+model Notice {
+  id         Int      @id @default(autoincrement())
+  pharmacyId Int
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  title      String
+  body       String
+  kind       String   @default("info")
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([pharmacyId])
+}
+
+/// Statuts : À traiter | En cours | Résolu | Rejeté
+model Report {
+  id            Int      @id @default(autoincrement())
+  pharmacyId    Int
+  pharmacy      Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  productId     Int?
+  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  target        String
+  reason        String
+  details       String
+  status        String   @default("À traiter")
+  reporterEmail String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// actor : Administration | Pharmacie | Visiteur
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actor       String
+  actorUserId Int?
+  action      String
+  entity      String
+  entityId    Int?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String @id
+  value     String
+  jsonValue Json?
+  valueType String @default("string")
+}
+
+model PharmacyPreferences {
+  pharmacyId            Int      @id
+  pharmacy              Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  notificationMessages  Boolean  @default(true)
+  subscriptionReminders Boolean  @default(true)
+  lowStockAlerts        Boolean  @default(false)
+  lowStockThreshold     Int      @default(5)
+  extra                 Json?
+}
+
+/// Messages envoyés via le formulaire de contact public
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  name      String
+  email     String
+  topic     String
+  message   String
+  status    String   @default("Nouveau")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Stockage binaire (images, PDF, documents bureautiques) directement en base
+model MediaAsset {
+  id         Int      @id @default(autoincrement())
+  ownerId    Int?
+  pharmacyId Int?
+  entity     String?
+  entityId   Int?
+  fileName   String
+  mimeType   String
+  size       Int
+  data       Bytes
+  sha256     String?
+  metadata   Json?
+  isPublic   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([pharmacyId])
+}
+
+/// Enregistrements structurés dynamiques (JSON + binaire optionnel)
+model CustomRecord {
+  id         Int      @id @default(autoincrement())
+  namespace  String
+  recordKey  String
+  data       Json
+  binaryData Bytes?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([namespace, recordKey])
+}

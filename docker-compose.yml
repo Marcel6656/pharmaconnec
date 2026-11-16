@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pharmaconnect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pharmaconnect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definissez POSTGRES_PASSWORD dans l'environnement}
+      POSTGRES_DB: ${POSTGRES_DB:-pharmaconnect}
+    volumes:
+      - pharmaconnect-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pharmaconnect-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: "production"
+      PORT: "4000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-pharmaconnect}:${POSTGRES_PASSWORD:?Definissez POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pharmaconnect}?schema=public"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
+      JWT_SECRET: "${JWT_SECRET:?Definissez un secret JWT de 32+ caracteres}"
+      JWT_EXPIRES_IN: "7d"
+      TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-0}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      PAYMENT_WEBHOOK_SECRET: "${PAYMENT_WEBHOOK_SECRET:-}"
+      MOBILE_MONEY_MODE: "${MOBILE_MONEY_MODE:-manual_reconciliation}"
+      AIRTEL_MONEY_CLIENT_ID: "${AIRTEL_MONEY_CLIENT_ID:-}"
+      AIRTEL_MONEY_CLIENT_SECRET: "${AIRTEL_MONEY_CLIENT_SECRET:-}"
+      AIRTEL_MONEY_API_URL: "${AIRTEL_MONEY_API_URL:-}"
+      MOOV_MONEY_API_KEY: "${MOOV_MONEY_API_KEY:-}"
+      MOOV_MONEY_API_URL: "${MOOV_MONEY_API_URL:-}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      EMAIL_FROM: "${EMAIL_FROM:-PharmaConnect <notifications@pharmaconnect.td>}"
+      SMTP_WEBHOOK_URL: "${SMTP_WEBHOOK_URL:-}"
+      SMS_API_URL: "${SMS_API_URL:-}"
+      SMS_API_KEY: "${SMS_API_KEY:-}"
+      SMS_SENDER_ID: "${SMS_SENDER_ID:-PharmaConn}"
+      UPLOAD_DIR: "./uploads"
+    volumes:
+      - pharmaconnect-uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./pharmaconnect
+      dockerfile: Dockerfile
+      args:
+        BACKEND_URL: "http://backend:4000"
+    container_name: pharmaconnect-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_BIND_IP:-127.0.0.1}:3000:3000"
+    environment:
+      BACKEND_URL: "http://backend:4000"
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: "${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}"
+
+volumes:
+  pharmaconnect-pgdata:
+  pharmaconnect-uploads:
