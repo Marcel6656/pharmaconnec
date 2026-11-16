@@ -6,3 +6,4 @@
 *.log
 node_modules/
 sauvegarde-pharma/
+.vercel
