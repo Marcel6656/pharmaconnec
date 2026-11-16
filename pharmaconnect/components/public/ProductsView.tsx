@@ -8,7 +8,6 @@ import {
   isPharmacyActiveAndValid,
   money,
   officialCategories,
-  SectionTitle,
   Empty,
 } from '@/lib/shared';
 import { getProductImage } from '@/lib/media';
@@ -95,179 +94,186 @@ export function ProductsView({
   const displayedProducts = hasActiveFilters ? filteredPublicProducts : filteredPublicProducts.slice(0, 12);
 
   return (
-    <div className="cg-page-container animate-fade-in">
-      <div className="pc-page-visual-banner">
-        <div className="pc-page-banner-copy">
-          <SectionTitle
-            eyebrow={isEn ? 'PUBLIC CATALOG' : 'CATALOGUE PUBLIC'}
-            badge={`${filteredPublicProducts.length} référence(s)`}
-            title={isEn ? 'Products & medications' : 'Produits disponibles'}
-            desc={
-              isEn
-                ? 'Browse verified products, indicative prices and live stocks declared by registered pharmacies.'
-                : 'Consultez les produits validés, leurs prix indicatifs et les stocks déclarés par les pharmacies enregistrées.'
-            }
-            icon={<ModernPackageBoxIcon size={24} />}
-          />
+    <div className="pc-luxe-subpage animate-fade-in">
+      {/* En-tête éditorial Luxe Studio */}
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/hero-cinema-medicines.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'PUBLIC CATALOG' : 'CATALOGUE OFFICIEL'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Products & Medications' : 'Produits Disponibles'}
+          </h1>
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Browse verified products, indicative prices and live stocks declared by registered pharmacies.'
+              : 'Consultez les références validées, leurs prix indicatifs et les disponibilités déclarées par nos pharmacies partenaires.'}
+          </p>
+          <span className="luxe-inner-count-pill">
+            <ModernPackageBoxIcon size={15} />
+            {filteredPublicProducts.length} {isEn ? 'reference(s)' : 'référence(s) en ligne'}
+          </span>
         </div>
+      </section>
 
-        <div className="pc-page-banner-media">
-          <img
-            src="/images/hero-cinema-medicines.jpg"
-            alt={isEn ? 'Medicines showcase' : 'Vitrine médicaments et produits santé'}
-            className="pc-banner-drift-img"
-          />
-          <div className="pc-banner-float-thumb">
-            <img src="/images/prod-vitaminc.jpg" alt="Vitamines et soins" />
-            <span>{filteredPublicProducts.length} en catalogue</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="cg-category-pill-bar">
-        <button
-          type="button"
-          className={`cg-cat-pill ${categoryFilter === 'Toutes les catégories' ? 'active' : ''}`}
-          onClick={() => setCategoryFilter('Toutes les catégories')}
-        >
-          <ModernPackageBoxIcon size={15} /> {isEn ? 'All categories' : 'Toutes les catégories'}
-        </button>
-        {catalogCategories.map(c => (
-          <button
-            type="button"
-            key={c}
-            className={`cg-cat-pill ${categoryFilter === c ? 'active' : ''}`}
-            onClick={() => setCategoryFilter(c)}
-          >
-            <CategoryGlyph name={c} /> {c}
-          </button>
-        ))}
-      </div>
-
-      <div className="cg-filter-card">
-        <div className="directory-tools pc-products-tools">
-          <div className="search-control">
-            <ModernSearchMedicineIcon size={18} />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={isEn ? 'Medicine, brand, pharmacy...' : 'Médicament, marque, pharmacie…'}
-            />
-          </div>
-          <select value={city} onChange={e => setCity(e.target.value)}>
-            {['Toutes les villes', ...Array.from(new Set(validPharmacies.map(p => p.city)))].map(c => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-          <select value={availabilityFilter} onChange={e => setAvailabilityFilter(e.target.value)}>
-            <option value="Toutes">Tous les stocks</option>
-            <option value="Disponible">En stock uniquement</option>
-            <option value="Indisponible">Indisponibles</option>
-          </select>
-          {setMinPrice && (
-            <input
-              type="number"
-              min="0"
-              className="pc-price-input"
-              value={minPrice}
-              onChange={e => setMinPrice(e.target.value)}
-              placeholder="Prix min (FCFA)"
-            />
-          )}
-          {setMaxPrice && (
-            <input
-              type="number"
-              min="0"
-              className="pc-price-input"
-              value={maxPrice}
-              onChange={e => setMaxPrice(e.target.value)}
-              placeholder="Prix max (FCFA)"
-            />
-          )}
-        </div>
-      </div>
-
-      <section className="mc-section">
-        <div className="cg-results-summary" style={{ marginBottom: 16 }}>
-          <b>{filteredPublicProducts.length} produit(s) référencé(s)</b>
-          <span>Informations déclarées par chaque pharmacie</span>
-        </div>
-
-        <div className="mc-product-grid">
-          {displayedProducts.map(p => {
-            const ph = data.pharmacies.find(x => x.id === p.pharmacyId);
-            return (
-              <article className="mc-product-card pc-animated-card" key={p.id}>
-                <div className="mc-product-media">
-                  <img src={getProductImage(p)} alt={p.name} className="pc-zoom-media" />
-                  <span className={p.stock > 0 ? 'mc-stock-badge in' : 'mc-stock-badge out'}>
-                    {p.stock > 0 ? `${p.stock} en stock` : 'Rupture'}
-                  </span>
-                </div>
-                <div className="mc-product-body">
-                  <span className="mc-product-cat">{p.category}</span>
-                  <h3>{p.name}</h3>
-                  <small className="mc-product-brand">
-                    {p.brand ? `${p.brand} · ` : ''}{ph?.name || 'Officine vérifiée'}
-                  </small>
-                  <div className="mc-price-line">
-                    <b>{money(p.price)}</b>
-                    <button
-                      type="button"
-                      className="mc-pharm-mini-link"
-                      onClick={() => {
-                        setSelectedPharmacy(p.pharmacyId);
-                        go('Fiche pharmacie');
-                      }}
-                    >
-                      <MapPin size={12} /> {ph?.area || ph?.city || 'Officine'}
-                    </button>
-                  </div>
-                  <div className="mc-card-actions">
-                    <button
-                      type="button"
-                      className="mc-outline-pill-btn"
-                      onClick={() => {
-                        setSelectedPharmacy(p.pharmacyId);
-                        setSelectedProduct(p.id);
-                        setModal('message');
-                      }}
-                    >
-                      Contacter
-                    </button>
-                    {ph?.phone && (
-                      <a
-                        className="product-whatsapp-btn"
-                        href={buildWhatsAppUrl(ph.phone, `Bonjour ${ph.name}, le produit "${p.name}" (${money(p.price)}) est-il disponible ?`)}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Contacter cette pharmacie sur WhatsApp"
-                      >
-                        <ModernWhatsAppIcon size={15} /> WhatsApp
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {filteredPublicProducts.length === 0 && (
-          <Empty title="Aucun produit trouvé" detail="Aucun produit publié ne correspond à vos critères de recherche." />
-        )}
-
-        {filteredPublicProducts.length > 12 && !showAllProducts && (
-          <div className="mc-center-btn-row">
+      {/* Filtres sur fond crème #f5f1e8 */}
+      <section className="luxe-filter-band">
+        <div className="luxe-container">
+          <div className="cg-category-pill-bar luxe-pill-bar">
             <button
               type="button"
-              className="cg-btn-pine"
-              onClick={() => setShowAllProducts(true)}
+              className={`luxe-filter-btn ${categoryFilter === 'Toutes les catégories' ? 'active' : ''}`}
+              onClick={() => setCategoryFilter('Toutes les catégories')}
             >
-              Afficher tout ({filteredPublicProducts.length})
+              <ModernPackageBoxIcon size={14} /> {isEn ? 'All categories' : 'Toutes les catégories'}
             </button>
+            {catalogCategories.map(c => (
+              <button
+                type="button"
+                key={c}
+                className={`luxe-filter-btn ${categoryFilter === c ? 'active' : ''}`}
+                onClick={() => setCategoryFilter(c)}
+              >
+                <CategoryGlyph name={c} /> {c}
+              </button>
+            ))}
           </div>
-        )}
+
+          <div className="luxe-filter-card">
+            <div className="directory-tools pc-products-tools">
+              <div className="search-control">
+                <ModernSearchMedicineIcon size={18} />
+                <input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={isEn ? 'Medicine, brand, pharmacy...' : 'Médicament, marque, pharmacie…'}
+                />
+              </div>
+              <select value={city} onChange={e => setCity(e.target.value)}>
+                {['Toutes les villes', ...Array.from(new Set(validPharmacies.map(p => p.city)))].map(c => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <select value={availabilityFilter} onChange={e => setAvailabilityFilter(e.target.value)}>
+                <option value="Toutes">Tous les stocks</option>
+                <option value="Disponible">En stock uniquement</option>
+                <option value="Indisponible">Indisponibles</option>
+              </select>
+              {setMinPrice && (
+                <input
+                  type="number"
+                  min="0"
+                  className="pc-price-input"
+                  value={minPrice}
+                  onChange={e => setMinPrice(e.target.value)}
+                  placeholder="Prix min (FCFA)"
+                />
+              )}
+              {setMaxPrice && (
+                <input
+                  type="number"
+                  min="0"
+                  className="pc-price-input"
+                  value={maxPrice}
+                  onChange={e => setMaxPrice(e.target.value)}
+                  placeholder="Prix max (FCFA)"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Grille des produits */}
+      <section className="luxe-section">
+        <div className="luxe-container">
+          <div className="cg-results-summary" style={{ marginBottom: 20 }}>
+            <b>{filteredPublicProducts.length} produit(s) référencé(s)</b>
+            <span>Informations déclarées par chaque pharmacie</span>
+          </div>
+
+          <div className="mc-product-grid">
+            {displayedProducts.map(p => {
+              const ph = data.pharmacies.find(x => x.id === p.pharmacyId);
+              return (
+                <article className="mc-product-card pc-animated-card luxe-product-card" key={p.id}>
+                  <div className="mc-product-media">
+                    <img src={getProductImage(p)} alt={p.name} className="pc-zoom-media" />
+                    <span className={p.stock > 0 ? 'mc-stock-badge in' : 'mc-stock-badge out'}>
+                      {p.stock > 0 ? `${p.stock} en stock` : 'Rupture'}
+                    </span>
+                  </div>
+                  <div className="mc-product-body">
+                    <span className="mc-product-cat">{p.category}</span>
+                    <h3>{p.name}</h3>
+                    <small className="mc-product-brand">
+                      {p.brand ? `${p.brand} · ` : ''}{ph?.name || 'Officine vérifiée'}
+                    </small>
+                    <div className="mc-price-line">
+                      <b>{money(p.price)}</b>
+                      <button
+                        type="button"
+                        className="mc-pharm-mini-link"
+                        onClick={() => {
+                          setSelectedPharmacy(p.pharmacyId);
+                          go('Fiche pharmacie');
+                        }}
+                      >
+                        <MapPin size={12} /> {ph?.area || ph?.city || 'Officine'}
+                      </button>
+                    </div>
+                    <div className="mc-card-actions">
+                      <button
+                        type="button"
+                        className="mc-outline-pill-btn"
+                        onClick={() => {
+                          setSelectedPharmacy(p.pharmacyId);
+                          setSelectedProduct(p.id);
+                          setModal('message');
+                        }}
+                      >
+                        Contacter
+                      </button>
+                      {ph?.phone && (
+                        <a
+                          className="product-whatsapp-btn"
+                          href={buildWhatsAppUrl(ph.phone, `Bonjour ${ph.name}, le produit "${p.name}" (${money(p.price)}) est-il disponible ?`)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Contacter cette pharmacie sur WhatsApp"
+                        >
+                          <ModernWhatsAppIcon size={15} /> WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {filteredPublicProducts.length === 0 && (
+            <Empty title="Aucun produit trouvé" detail="Aucun produit publié ne correspond à vos critères de recherche." />
+          )}
+
+          {filteredPublicProducts.length > 12 && !showAllProducts && (
+            <div className="mc-center-btn-row">
+              <button
+                type="button"
+                className="luxe-btn luxe-btn-primary"
+                onClick={() => setShowAllProducts(true)}
+              >
+                Afficher tout ({filteredPublicProducts.length})
+              </button>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

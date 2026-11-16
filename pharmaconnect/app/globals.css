@@ -20856,6 +20856,7 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .luxe-hero-bg,
+  .luxe-inner-hero-bg,
   .luxe-scroll-indicator,
   .luxe-hero-eyebrow,
   .luxe-hero-title,
@@ -20864,4 +20865,108 @@ body,
   .luxe-hero-buttons {
     animation: none !important;
   }
+}
+
+/* ========================================================================
+   SOUS-PAGES PRODUITS & PHARMACIES — STYLE LUXE STUDIO (#549589)
+   ======================================================================== */
+.pc-luxe-subpage {
+  width: 100%;
+}
+
+.luxe-inner-hero {
+  position: relative;
+  min-height: 290px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: clamp(42px, 6vw, 70px) 0;
+}
+
+.luxe-inner-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+  animation: luxeHeroKenBurns 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.luxe-inner-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 780px;
+}
+
+.luxe-inner-hero-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 600;
+  line-height: 1.12;
+  color: #ffffff;
+}
+
+.luxe-inner-hero-sub {
+  margin: 0 0 1.25rem;
+  max-width: 600px;
+  font-size: clamp(0.95rem, 1.35vw, 1.1rem);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.luxe-inner-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 15px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 165, 116, 0.55);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.luxe-filter-band {
+  background: var(--secondary-color);
+  padding: 24px 0;
+  border-bottom: 1px solid rgba(44, 44, 44, 0.08);
+}
+
+.luxe-pill-bar {
+  margin-bottom: 14px;
+}
+
+.luxe-filter-card {
+  background: #ffffff;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(44, 44, 44, 0.08);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+}
+
+.luxe-filter-card .outline-btn.pc-filter-active {
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+
+.luxe-product-card h3,
+.pharmacy-card-title {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+}
+
+.luxe-product-card .mc-product-cat {
+  color: #9e7242;
+  background: #f5f1e8;
+}
+
+.luxe-product-card .mc-outline-pill-btn:hover,
+.pharmacy-card .cg-card-action-btn:hover {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff;
 }
