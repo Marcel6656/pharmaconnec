@@ -11,6 +11,7 @@ import {
   buildWhatsAppUrl
 } from '@/components/shared/ModernIcons';
 import { SanteProcheWaveRibbon } from '@/components/shared/SanteProcheIllustrations';
+import { getPharmacyCoverImage } from '@/lib/media';
 
 interface PharmacyCardProps {
   pharmacy: Pharmacy;
@@ -22,19 +23,12 @@ interface PharmacyCardProps {
 export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCardProps) {
   const allBadges = activeBadges(pharmacy, badges);
   const is24h = allBadges.some(b => b.name.toLowerCase().includes('garde') || b.name.toLowerCase().includes('24'));
+  const coverSrc = getPharmacyCoverImage(pharmacy);
 
   return (
-    <article className="pharmacy-card cg-modern-card" onClick={onOpen}>
+    <article className="pharmacy-card cg-modern-card pc-animated-card" onClick={onOpen}>
       <div className="pharmacy-card-cover-wrap sp-pharmacy-cover-blended">
-        {pharmacy.coverImage ? (
-          <img src={pharmacy.coverImage} alt={pharmacy.name} className="pharmacy-cover-img sp-mask-fade-bottom" />
-        ) : (
-          <div className="pharmacy-card-placeholder">
-            <span className="store-avatar-large">
-              <ModernDigitalStoreIcon size={26} />
-            </span>
-          </div>
-        )}
+        <img src={coverSrc} alt={pharmacy.name} className="pharmacy-cover-img sp-mask-fade-bottom pc-zoom-media" />
         <SanteProcheWaveRibbon variant="light" className="sp-card-wave" />
         <div className="pharmacy-card-badge-overlay">
           <Status>{pharmacy.status}</Status>

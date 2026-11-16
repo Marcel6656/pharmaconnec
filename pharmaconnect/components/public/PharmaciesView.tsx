@@ -48,13 +48,29 @@ export function PharmaciesView({
 
   return (
     <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="ANNUAIRE OFFICIEL"
-        badge={`${displayedPharmacies.length} officine(s) active(s)`}
-        title="Pharmacies enregistrées"
-        desc="Localisez une pharmacie agréée, consultez ses produits et contactez l’officine."
-        icon={<ModernDigitalStoreIcon size={24} />}
-      />
+      <div className="pc-page-visual-banner">
+        <div className="pc-page-banner-copy">
+          <SectionTitle
+            eyebrow="ANNUAIRE OFFICIEL"
+            badge={`${displayedPharmacies.length} officine(s) active(s)`}
+            title="Pharmacies enregistrées"
+            desc="Localisez une pharmacie agréée, consultez ses produits et contactez l’officine en direct."
+            icon={<ModernDigitalStoreIcon size={24} />}
+          />
+        </div>
+
+        <div className="pc-page-banner-media">
+          <img
+            src="/images/pharmacy-interior.jpg"
+            alt="Pharmacie agréée PharmaConnect"
+            className="pc-banner-drift-img"
+          />
+          <div className="pc-banner-float-thumb">
+            <img src="/images/hero-pharmacist.jpg" alt="Pharmacien disponible" />
+            <span>{displayedPharmacies.length} officine(s) vérifiée(s)</span>
+          </div>
+        </div>
+      </div>
 
       <div className="cg-filter-card">
         <div className="directory-tools pc-pharmacies-tools">

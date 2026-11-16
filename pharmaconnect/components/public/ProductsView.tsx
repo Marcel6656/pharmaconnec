@@ -11,6 +11,7 @@ import {
   SectionTitle,
   Empty,
 } from '@/lib/shared';
+import { getProductImage } from '@/lib/media';
 import { Language } from '@/lib/translations';
 import {
   ModernBabyCareIcon,
@@ -95,17 +96,33 @@ export function ProductsView({
 
   return (
     <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow={isEn ? 'PUBLIC CATALOG' : 'CATALOGUE PUBLIC'}
-        badge={`${filteredPublicProducts.length} référence(s)`}
-        title={isEn ? 'Products & medications' : 'Produits disponibles'}
-        desc={
-          isEn
-            ? 'Browse verified products, indicative prices and live stocks declared by registered pharmacies.'
-            : 'Consultez les produits validés, leurs prix indicatifs et les stocks déclarés par les pharmacies enregistrées.'
-        }
-        icon={<ModernPackageBoxIcon size={24} />}
-      />
+      <div className="pc-page-visual-banner">
+        <div className="pc-page-banner-copy">
+          <SectionTitle
+            eyebrow={isEn ? 'PUBLIC CATALOG' : 'CATALOGUE PUBLIC'}
+            badge={`${filteredPublicProducts.length} référence(s)`}
+            title={isEn ? 'Products & medications' : 'Produits disponibles'}
+            desc={
+              isEn
+                ? 'Browse verified products, indicative prices and live stocks declared by registered pharmacies.'
+                : 'Consultez les produits validés, leurs prix indicatifs et les stocks déclarés par les pharmacies enregistrées.'
+            }
+            icon={<ModernPackageBoxIcon size={24} />}
+          />
+        </div>
+
+        <div className="pc-page-banner-media">
+          <img
+            src="/images/hero-cinema-medicines.jpg"
+            alt={isEn ? 'Medicines showcase' : 'Vitrine médicaments et produits santé'}
+            className="pc-banner-drift-img"
+          />
+          <div className="pc-banner-float-thumb">
+            <img src="/images/prod-vitaminc.jpg" alt="Vitamines et soins" />
+            <span>{filteredPublicProducts.length} en catalogue</span>
+          </div>
+        </div>
+      </div>
 
       <div className="cg-category-pill-bar">
         <button
@@ -180,9 +197,9 @@ export function ProductsView({
           {displayedProducts.map(p => {
             const ph = data.pharmacies.find(x => x.id === p.pharmacyId);
             return (
-              <article className="mc-product-card" key={p.id}>
+              <article className="mc-product-card pc-animated-card" key={p.id}>
                 <div className="mc-product-media">
-                  {p.imageDataUrl ? <img src={p.imageDataUrl} alt={p.name} /> : <ModernPackageBoxIcon size={34} />}
+                  <img src={getProductImage(p)} alt={p.name} className="pc-zoom-media" />
                   <span className={p.stock > 0 ? 'mc-stock-badge in' : 'mc-stock-badge out'}>
                     {p.stock > 0 ? `${p.stock} en stock` : 'Rupture'}
                   </span>
