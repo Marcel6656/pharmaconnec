@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { ArrowRight, Play, ShieldCheck, Users, Star, Clock } from 'lucide-react';
-import { SectionTitle } from '@/lib/shared';
 import { Language } from '@/lib/translations';
 import {
   ModernBrandLogoIcon,
@@ -125,79 +124,47 @@ export function AboutPage({
     }
   ];
 
+  const isEn = currentLang === 'en';
+
   return (
-    <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="QUI SOMMES-NOUS · KAYRA INNOVATION"
-        badge="Réseau Officinal Vérifié"
-        title="À propos de PharmaConnect"
-        desc="La plateforme qui connecte pharmacies et patients en toute simplicité."
-        icon={<ModernBrandLogoIcon size={24} />}
-      />
-
-      {/* ============================================================ */}
-      {/* 1. HERO SECTION — MODÈLE HELIX (PALETTE PINE / MENTHE)       */}
-      {/* ============================================================ */}
-      <section className="hx-hero">
-        <div className="hx-hero-left">
-          <div className="hx-kicker-pill">
-            <ModernLivePulseIcon size={15} />
-            <span>Meilleure Santé, Meilleur Avenir</span>
-          </div>
-
-          <h1 className="hx-hero-title">
-            Des Soins Avancés<br />
-            pour une Santé<br />
-            <span className="hx-highlight">Plus Proche</span>
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/hero-pharmacist.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'ABOUT US · KAYRA INNOVATION' : 'QUI SOMMES-NOUS · KAYRA INNOVATION'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'About PharmaConnect' : 'À propos de PharmaConnect'}
           </h1>
-
-          <p className="hx-hero-desc">
-            Développée par KAYRA Innovation, PharmaConnect associe technologie de pointe et expertise officinale pour vous guider vers les médicaments et pharmacies disponibles autour de vous.
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Developed by KAYRA Innovation, PharmaConnect links certified pharmacies and patients with real-time stock transparency.'
+              : 'Développée par KAYRA Innovation, PharmaConnect relie les officines agréées et les patients grâce aux stocks vérifiés en temps réel.'}
           </p>
-
-          <div className="hx-hero-actions">
-            <button type="button" className="cg-btn-pine" onClick={() => go('Pharmacies')}>
-              Explorer l’annuaire <ArrowRight size={15} />
+          <div className="luxe-hero-buttons" style={{ marginBottom: 14 }}>
+            <button type="button" className="luxe-btn luxe-btn-primary" onClick={() => go('Pharmacies')}>
+              {isEn ? 'Explore directory' : 'Explorer l’annuaire'} <ArrowRight size={15} />
             </button>
-            <a href="#hx-journey-section" className="hx-video-link">
-              <span className="hx-play-circle"><Play size={12} fill="currentColor" /></span>
-              <span>Comment ça marche</span>
+            <a href="#hx-journey-section" className="luxe-btn luxe-btn-outline" style={{ textDecoration: 'none' }}>
+              <Play size={14} fill="currentColor" /> {isEn ? 'How it works' : 'Comment ça marche'}
             </a>
           </div>
-        </div>
-
-        <div className="hx-hero-right">
-          <div className="hx-hero-backdrop-blob" aria-hidden="true" />
-          <img
-            src="/images/hero-pharmacist.jpg"
-            alt="Professionnel de santé partenaire PharmaConnect"
-            className="hx-hero-doctor-img"
-          />
-
-          <div className="hx-float-card hx-float-top-right">
-            <span className="hx-float-icon mint"><Users size={18} /></span>
-            <div>
-              <b>{pharmaciesCount !== undefined ? `${pharmaciesCount} Officine(s)` : 'Officines Agréées'}</b>
-              <small>Réseau vérifié</small>
-            </div>
-          </div>
-
-          <div className="hx-float-card hx-float-bottom-left">
-            <span className="hx-float-icon dark"><ShieldCheck size={18} /></span>
-            <div>
-              <b>14 Jours</b>
-              <small>Essai Pro offert</small>
-            </div>
-          </div>
-
-          <div className="hx-side-visual-card" aria-hidden="true">
-            <img src="/images/pharmacy-interior.jpg" alt="" />
-            <span className="hx-side-orb">+</span>
-          </div>
-
-          <span className="hx-handwriting">Votre Santé,<br />Notre Priorité</span>
+          {pharmaciesCount !== undefined && (
+            <span className="luxe-inner-count-pill">
+              <Users size={15} />
+              {pharmaciesCount} {isEn ? 'Verified pharmacies' : 'Officines vérifiées'}
+            </span>
+          )}
         </div>
       </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
       {/* ============================================================ */}
       {/* 2. 4 CARTES SPÉCIALITÉS AVEC FLÈCHE EN HAUT À DROITE         */}
@@ -418,6 +385,7 @@ export function AboutPage({
             Inscrire ma pharmacie <ArrowRight size={15} />
           </button>
         </section>
+      </div>
       </div>
     </div>
   );

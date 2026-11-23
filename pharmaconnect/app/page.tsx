@@ -43,6 +43,39 @@ const initialData: AppData = {
   plans: [], notices: [], reports: [], auditLogs: [], preferences: {},
 };
 
+const PUBLIC_PAGE_SLUGS: Record<string, string> = {
+  'Accueil': 'accueil',
+  'Pharmacies': 'pharmacies',
+  'Produits': 'produits',
+  'Fiche pharmacie': 'fiche-pharmacie',
+  'Tarifs': 'tarifs',
+  'Rubrique Santé': 'rubrique-sante',
+  'À propos': 'a-propos',
+  'Contact': 'contact',
+  'Confidentialité': 'confidentialite',
+  'Inscription pharmacie': 'inscription-pharmacie',
+};
+
+const SLUG_TO_PUBLIC_PAGE: Record<string, string> = Object.fromEntries(
+  Object.entries(PUBLIC_PAGE_SLUGS).map(([name, slug]) => [slug, name]),
+);
+
+const VALID_HEALTH_SUBPAGES: HealthSubPage[] = ['alerts', 'news', 'emergency'];
+
+function buildPublicUrl(targetPage: string, pharmacyIdVal: number, healthTabVal: HealthSubPage): string {
+  const slug = PUBLIC_PAGE_SLUGS[targetPage];
+  if (!slug || targetPage === 'Accueil') return '/';
+  const params = new URLSearchParams();
+  params.set('page', slug);
+  if (targetPage === 'Fiche pharmacie' && pharmacyIdVal > 0) {
+    params.set('pharmacy', String(pharmacyIdVal));
+  }
+  if (targetPage === 'Rubrique Santé' && healthTabVal) {
+    params.set('tab', healthTabVal);
+  }
+  return `/?${params.toString()}`;
+}
+
 export default function Home() {
   const [publicData, setPublicData] = useState<AppData>(initialData);
   const [privateSnapshot, setPrivateSnapshot] = useState<{
@@ -119,6 +152,8 @@ export default function Home() {
   const [pharmacyLoginForm, setPharmacyLoginForm] = useState({ email: '', password: '' });
   const [pharmacyLoginError, setPharmacyLoginError] = useState('');
   const [lang, setLang] = useState<Language>('fr');
+  const urlReadyRef = useRef(false);
+  const isPopStateRef = useRef(false);
 
   const ownedPharmacies = data.pharmacies.filter(p => p.ownerId === accountOwnerId);
   const currentOwned = ownedPharmacies.find(p => p.id === selectedPharmacyId) || ownedPharmacies[0];
@@ -321,8 +356,74 @@ export default function Home() {
     }
   }, [visitorLoggedIn, visitorAccount.email]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const applyFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('page')?.trim().toLowerCase();
+      if (slug && SLUG_TO_PUBLIC_PAGE[slug]) {
+        setSpace('public');
+        setPage(SLUG_TO_PUBLIC_PAGE[slug]);
+      } else if (!slug) {
+        setPage(prev => (space === 'public' ? 'Accueil' : prev));
+      }
+      const pharmRaw = Number(params.get('pharmacy'));
+      if (Number.isInteger(pharmRaw) && pharmRaw > 0) {
+        setSelectedPharmacy(pharmRaw);
+      }
+      const tabRaw = params.get('tab') as HealthSubPage | null;
+      if (tabRaw && VALID_HEALTH_SUBPAGES.includes(tabRaw)) {
+        setHealthSubPage(tabRaw);
+      }
+    };
+
+    applyFromLocation();
+    urlReadyRef.current = true;
+
+    const onPopState = () => {
+      isPopStateRef.current = true;
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('page')?.trim().toLowerCase();
+      const target = (slug && SLUG_TO_PUBLIC_PAGE[slug]) || 'Accueil';
+      setSpace('public');
+      setPage(target);
+      const pharmRaw = Number(params.get('pharmacy'));
+      if (Number.isInteger(pharmRaw) && pharmRaw > 0) {
+        setSelectedPharmacy(pharmRaw);
+      }
+      const tabRaw = params.get('tab') as HealthSubPage | null;
+      if (tabRaw && VALID_HEALTH_SUBPAGES.includes(tabRaw)) {
+        setHealthSubPage(tabRaw);
+      }
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !urlReadyRef.current || space !== 'public') return;
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false;
+      return;
+    }
+    if (!PUBLIC_PAGE_SLUGS[page]) return;
+    const targetUrl = buildPublicUrl(page, selectedPharmacy, healthSubPage);
+    const currentUrl = window.location.pathname + window.location.search;
+    if (currentUrl !== targetUrl) {
+      window.history.pushState({ page, selectedPharmacy, healthSubPage }, '', targetUrl);
+    }
+  }, [space, page, selectedPharmacy, healthSubPage]);
+
   const toggleFavoritePharmacy = (targetPharmacyId: number) => {
-    if (!visitorLoggedIn || !visitorAccount.email) return;
+    if (!visitorLoggedIn || !visitorAccount.email) {
+      say(lang === 'en'
+        ? 'Sign in to your visitor account to save favorite pharmacies.'
+        : 'Connectez-vous à votre compte visiteur pour enregistrer vos pharmacies favorites.');
+      setModal('account');
+      return;
+    }
     setFavoritePharmacyIds(prev => {
       const exists = prev.includes(targetPharmacyId);
       const next = exists ? prev.filter(id => id !== targetPharmacyId) : [...prev, targetPharmacyId];
@@ -345,10 +446,33 @@ export default function Home() {
     });
   }, [publicData, query, city, geoCoords]);
 
-  const filteredPublicProducts = useMemo(() => publicProducts.filter(p => {
-    const ph = publicData.pharmacies.find(x => x.id === p.pharmacyId);
-    return (!query || `${p.name} ${p.brand} ${p.category} ${p.code} ${ph?.name} ${ph?.city} ${ph?.area}`.toLowerCase().includes(query.toLowerCase())) && (categoryFilter === 'Toutes les catégories' || p.category === categoryFilter) && (!minPrice || p.price >= Number(minPrice)) && (!maxPrice || p.price <= Number(maxPrice)) && (availabilityFilter === 'Toutes' || (availabilityFilter === 'Disponible' ? p.stock > 0 : p.stock === 0)) && (city === 'Toutes les villes' || ph?.city === city);
-  }), [publicProducts, query, categoryFilter, publicData.pharmacies, minPrice, maxPrice, city, availabilityFilter]);
+  const filteredPublicProducts = useMemo(() => {
+    const normalizedCat = categoryFilter.trim().toLowerCase();
+    return publicProducts.filter(p => {
+      const ph = publicData.pharmacies.find(x => x.id === p.pharmacyId);
+      return (
+        (!query || `${p.name} ${p.brand} ${p.category} ${p.code} ${ph?.name} ${ph?.city} ${ph?.area}`.toLowerCase().includes(query.toLowerCase())) &&
+        (categoryFilter === 'Toutes les catégories' || p.category.trim().toLowerCase() === normalizedCat) &&
+        (!minPrice || p.price >= Number(minPrice)) &&
+        (!maxPrice || p.price <= Number(maxPrice)) &&
+        (availabilityFilter === 'Toutes' || (availabilityFilter === 'Disponible' ? p.stock > 0 : p.stock === 0)) &&
+        (city === 'Toutes les villes' || ph?.city === city)
+      );
+    });
+  }, [publicProducts, query, categoryFilter, publicData.pharmacies, minPrice, maxPrice, city, availabilityFilter]);
+
+  const openMessageModal = (targetPharmacyId: number, targetProductId: number | null = null) => {
+    const prod = targetProductId !== null ? publicData.products.find(x => x.id === targetProductId) : null;
+    setSelectedPharmacy(targetPharmacyId);
+    setSelectedProduct(targetProductId);
+    setMessageForm({
+      sender: visitorLoggedIn ? (visitorAccount.name || '') : '',
+      phone: visitorLoggedIn ? (visitorAccount.phone || '') : '',
+      subject: prod ? `Disponibilité : ${prod.name}` : 'Demande d’information',
+      body: '',
+    });
+    setModal('message');
+  };
 
   const myProducts = data.products.filter(p => p.pharmacyId === pharmacyId);
   const unreadMessages = data.messages.filter(m => m.pharmacyId === pharmacyId && m.direction === 'visitor' && !m.read).length;
@@ -752,6 +876,8 @@ export default function Home() {
                 setModal={setModal}
                 setExistingAccountRegistration={setExistingAccountRegistration}
                 currentLang={lang}
+                onOpenHealthSubPage={(sub) => { setHealthSubPage(sub); go('Rubrique Santé'); }}
+                onContactProduct={openMessageModal}
               />
             )}
 
@@ -768,6 +894,7 @@ export default function Home() {
                 publicPharmacies={publicPharmacies}
                 setSelectedPharmacy={setSelectedPharmacy}
                 go={go}
+                currentLang={lang}
               />
             )}
 
@@ -792,6 +919,7 @@ export default function Home() {
                 setModal={setModal}
                 go={go}
                 currentLang={lang}
+                onContactProduct={openMessageModal}
               />
             )}
 
@@ -806,6 +934,8 @@ export default function Home() {
                 go={go}
                 favoritePharmacyIds={favoritePharmacyIds}
                 toggleFavoritePharmacy={toggleFavoritePharmacy}
+                onContactProduct={openMessageModal}
+                currentLang={lang}
               />
             )}
 

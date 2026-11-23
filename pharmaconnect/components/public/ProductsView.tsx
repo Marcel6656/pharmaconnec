@@ -45,6 +45,7 @@ interface ProductsViewProps {
   setModal: (m: any) => void;
   go: (p: string) => void;
   currentLang?: Language;
+  onContactProduct?: (pharmacyId: number, productId: number | null) => void;
 }
 
 function CategoryGlyph({ name }: { name: string }) {
@@ -76,6 +77,7 @@ export function ProductsView({
   setModal,
   go,
   currentLang = 'fr',
+  onContactProduct,
 }: ProductsViewProps) {
   const [showAllProducts, setShowAllProducts] = useState(false);
   const isEn = currentLang === 'en';
@@ -157,13 +159,15 @@ export function ProductsView({
               </div>
               <select value={city} onChange={e => setCity(e.target.value)}>
                 {['Toutes les villes', ...Array.from(new Set(validPharmacies.map(p => p.city)))].map(c => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c === 'Toutes les villes' && isEn ? 'All cities' : c}
+                  </option>
                 ))}
               </select>
               <select value={availabilityFilter} onChange={e => setAvailabilityFilter(e.target.value)}>
-                <option value="Toutes">Tous les stocks</option>
-                <option value="Disponible">En stock uniquement</option>
-                <option value="Indisponible">Indisponibles</option>
+                <option value="Toutes">{isEn ? 'All stock' : 'Tous les stocks'}</option>
+                <option value="Disponible">{isEn ? 'In stock only' : 'En stock uniquement'}</option>
+                <option value="Indisponible">{isEn ? 'Out of stock' : 'Indisponibles'}</option>
               </select>
               {setMinPrice && (
                 <input
@@ -172,7 +176,7 @@ export function ProductsView({
                   className="pc-price-input"
                   value={minPrice}
                   onChange={e => setMinPrice(e.target.value)}
-                  placeholder="Prix min (FCFA)"
+                  placeholder={isEn ? 'Min price (FCFA)' : 'Prix min (FCFA)'}
                 />
               )}
               {setMaxPrice && (
@@ -182,7 +186,7 @@ export function ProductsView({
                   className="pc-price-input"
                   value={maxPrice}
                   onChange={e => setMaxPrice(e.target.value)}
-                  placeholder="Prix max (FCFA)"
+                  placeholder={isEn ? 'Max price (FCFA)' : 'Prix max (FCFA)'}
                 />
               )}
             </div>
@@ -194,8 +198,8 @@ export function ProductsView({
       <section className="luxe-section">
         <div className="luxe-container">
           <div className="cg-results-summary" style={{ marginBottom: 20 }}>
-            <b>{filteredPublicProducts.length} produit(s) référencé(s)</b>
-            <span>Informations déclarées par chaque pharmacie</span>
+            <b>{filteredPublicProducts.length} {isEn ? 'product(s) listed' : 'produit(s) référencé(s)'}</b>
+            <span>{isEn ? 'Information declared by each pharmacy' : 'Informations déclarées par chaque pharmacie'}</span>
           </div>
 
           <div className="mc-product-grid">
@@ -206,14 +210,16 @@ export function ProductsView({
                   <div className="mc-product-media">
                     <img src={getProductImage(p)} alt={p.name} className="pc-zoom-media" />
                     <span className={p.stock > 0 ? 'mc-stock-badge in' : 'mc-stock-badge out'}>
-                      {p.stock > 0 ? `${p.stock} en stock` : 'Rupture'}
+                      {p.stock > 0
+                        ? (isEn ? `${p.stock} in stock` : `${p.stock} en stock`)
+                        : (isEn ? 'Out of stock' : 'Rupture')}
                     </span>
                   </div>
                   <div className="mc-product-body">
                     <span className="mc-product-cat">{p.category}</span>
                     <h3>{p.name}</h3>
                     <small className="mc-product-brand">
-                      {p.brand ? `${p.brand} · ` : ''}{ph?.name || 'Officine vérifiée'}
+                      {p.brand ? `${p.brand} · ` : ''}{ph?.name || (isEn ? 'Verified pharmacy' : 'Officine vérifiée')}
                     </small>
                     <div className="mc-price-line">
                       <b>{money(p.price)}</b>
@@ -225,7 +231,7 @@ export function ProductsView({
                           go('Fiche pharmacie');
                         }}
                       >
-                        <MapPin size={12} /> {ph?.area || ph?.city || 'Officine'}
+                        <MapPin size={12} /> {ph?.area || ph?.city || (isEn ? 'Pharmacy' : 'Officine')}
                       </button>
                     </div>
                     <div className="mc-card-actions">
@@ -233,12 +239,16 @@ export function ProductsView({
                         type="button"
                         className="mc-outline-pill-btn"
                         onClick={() => {
-                          setSelectedPharmacy(p.pharmacyId);
-                          setSelectedProduct(p.id);
-                          setModal('message');
+                          if (onContactProduct) {
+                            onContactProduct(p.pharmacyId, p.id);
+                          } else {
+                            setSelectedPharmacy(p.pharmacyId);
+                            setSelectedProduct(p.id);
+                            setModal('message');
+                          }
                         }}
                       >
-                        Contacter
+                        {isEn ? 'Ask pharmacy' : 'Contacter'}
                       </button>
                       {ph?.phone && (
                         <a
@@ -246,7 +256,7 @@ export function ProductsView({
                           href={buildWhatsAppUrl(ph.phone, `Bonjour ${ph.name}, le produit "${p.name}" (${money(p.price)}) est-il disponible ?`)}
                           target="_blank"
                           rel="noreferrer"
-                          title="Contacter cette pharmacie sur WhatsApp"
+                          title={isEn ? 'Contact on WhatsApp' : 'Contacter cette pharmacie sur WhatsApp'}
                         >
                           <ModernWhatsAppIcon size={15} /> WhatsApp
                         </a>
@@ -259,17 +269,20 @@ export function ProductsView({
           </div>
 
           {filteredPublicProducts.length === 0 && (
-            <Empty title="Aucun produit trouvé" detail="Aucun produit publié ne correspond à vos critères de recherche." />
+            <Empty
+              title={isEn ? 'No products found' : 'Aucun produit trouvé'}
+              detail={isEn ? 'No published product matches your search criteria.' : 'Aucun produit publié ne correspond à vos critères de recherche.'}
+            />
           )}
 
-          {filteredPublicProducts.length > 12 && !showAllProducts && (
+          {filteredPublicProducts.length > 12 && !hasActiveFilters && (
             <div className="mc-center-btn-row">
               <button
                 type="button"
                 className="luxe-btn luxe-btn-primary"
                 onClick={() => setShowAllProducts(true)}
               >
-                Afficher tout ({filteredPublicProducts.length})
+                {isEn ? `Show all (${filteredPublicProducts.length})` : `Afficher tout (${filteredPublicProducts.length})`}
               </button>
             </div>
           )}

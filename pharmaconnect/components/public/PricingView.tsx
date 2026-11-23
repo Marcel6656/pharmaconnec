@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { AppData, money, SectionTitle } from '@/lib/shared';
+import { AppData, money } from '@/lib/shared';
 import { Language } from '@/lib/translations';
 import {
   ModernDigitalStoreIcon,
@@ -72,15 +72,37 @@ export function PricingView({
     }
   ];
 
+  const isEn = currentLang === 'en';
+
   return (
-    <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="POUR LES PROFESSIONNELS"
-        badge="14 jours d’essai gratuit"
-        title="Des formules adaptées à votre pharmacie"
-        desc="Choisissez une formule pour gérer votre vitrine et votre présence sur PharmaConnect."
-        icon={<ModernSparkleCrownIcon size={24} />}
-      />
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/cta-pharmacist.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'FOR PHARMACY PROFESSIONALS' : 'POUR LES PROFESSIONNELS'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Plans Tailored to Your Pharmacy' : 'Des formules adaptées à votre pharmacie'}
+          </h1>
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Choose a plan to manage your public catalog, verified badge and patient visibility on PharmaConnect.'
+              : 'Choisissez une formule pour gérer votre vitrine et votre présence sur PharmaConnect.'}
+          </p>
+          <span className="luxe-inner-count-pill">
+            <ModernSparkleCrownIcon size={15} />
+            {isEn ? '14-day free trial included' : '14 jours d’essai gratuit'}
+          </span>
+        </div>
+      </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
       <div className="trial-banner cg-trial-banner-pro">
         <span className="cg-info-icon-pill"><ModernSparkleCrownIcon size={20} /></span>
@@ -210,6 +232,7 @@ export function PricingView({
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

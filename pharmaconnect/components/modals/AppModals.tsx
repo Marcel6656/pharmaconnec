@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppData, Pharmacy, Product, money, Modal, Empty, isProductFresh, isStrongPassword, PASSWORD_POLICY_ERROR } from '@/lib/shared';
+import { getProductImage } from '@/lib/media';
 import { RegistrationForm } from '@/components/shared/RegistrationForm';
 import {
   ModernAlertWarningIcon,
@@ -518,6 +519,21 @@ export function AppModals({
         >
           <form onSubmit={sendPublicMessage}>
             <div className="modal-info"><ModernChatEncryptedIcon size={17} /> Aucun compte visiteur n’est requis pour envoyer une demande. {visitorLoggedIn ? 'Cette conversation sera associée à votre compte.' : 'Connectez-vous avant l’envoi pour retrouver cette conversation dans votre espace.'}</div>
+            {targetProduct && (
+              <div className="cg-whatsapp-modal-banner" style={{ background: '#faf7f2', borderColor: 'rgba(212, 165, 116, 0.45)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <img
+                    src={getProductImage(targetProduct)}
+                    alt={targetProduct.name}
+                    style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+                  />
+                  <div>
+                    <b>{targetProduct.name}</b>
+                    <small style={{ color: '#666666' }}>{money(targetProduct.price)} · {targetProduct.category}</small>
+                  </div>
+                </div>
+              </div>
+            )}
             {targetPharmacy && (
               <div className="cg-whatsapp-modal-banner">
                 <div>
@@ -852,35 +868,39 @@ export function AppModals({
                     </div>
                   )}
 
-                  {/* Option d'inscription / connexion rapide via Google */}
-                  <div className="gm-google-wrap">
-                    {googleError && (
-                      <div className="gm-error-alert" style={{ marginBottom: 8 }}>
-                        <ModernAlertWarningIcon size={15} />
-                        <span>{googleError}</span>
+                  {googleConfig?.clientId && (
+                    <>
+                      {/* Option d'inscription / connexion rapide via Google */}
+                      <div className="gm-google-wrap">
+                        {googleError && (
+                          <div className="gm-error-alert" style={{ marginBottom: 8 }}>
+                            <ModernAlertWarningIcon size={15} />
+                            <span>{googleError}</span>
+                          </div>
+                        )}
+
+                        {!gsiLoaded && (
+                          <button
+                            type="button"
+                            className="gm-google-pill-btn"
+                            disabled={googleLoading}
+                            onClick={() => handleGoogleButtonClick('VISITOR')}
+                          >
+                            <ModernGoogleLogoIcon size={18} />
+                            <span>{googleLoading ? 'Connexion Google en cours…' : 'S’inscrire / Continuer avec Google'}</span>
+                          </button>
+                        )}
+
+                        {gsiLoaded && (
+                          <div ref={gsiButtonVisitorRef} className="gm-gsi-official-slot" />
+                        )}
                       </div>
-                    )}
 
-                    {!(googleConfig?.clientId && gsiLoaded) && (
-                      <button
-                        type="button"
-                        className="gm-google-pill-btn"
-                        disabled={googleLoading}
-                        onClick={() => handleGoogleButtonClick('VISITOR')}
-                      >
-                        <ModernGoogleLogoIcon size={18} />
-                        <span>{googleLoading ? 'Connexion Google en cours…' : 'S’inscrire / Continuer avec Google'}</span>
-                      </button>
-                    )}
-
-                    {googleConfig?.clientId && gsiLoaded && (
-                      <div ref={gsiButtonVisitorRef} className="gm-gsi-official-slot" />
-                    )}
-                  </div>
-
-                  <div className="gm-divider-line">
-                    <span>ou avec votre e-mail</span>
-                  </div>
+                      <div className="gm-divider-line">
+                        <span>ou avec votre e-mail</span>
+                      </div>
+                    </>
+                  )}
 
                   {visitorAuthMode === 'register' && (
                     <div className="gm-pill-input-wrap">
@@ -936,8 +956,9 @@ export function AppModals({
       )}
 
       {modal === 'visitorInbox' && visitorLoggedIn && visitorAccount.email && (() => {
+        const visitorEmailLower = visitorAccount.email.trim().toLowerCase();
         const visitorThreads = data.messages
-          .filter(m => m.direction === 'visitor' && !m.threadId && m.visitorId === visitorAccount.email)
+          .filter(m => m.direction === 'visitor' && !m.threadId && (m.visitorId || '').trim().toLowerCase() === visitorEmailLower)
           .sort((a, b) => b.id - a.id);
         const totalReplies = visitorThreads.reduce(
           (acc, thread) => acc + data.messages.filter(x => x.threadId === thread.id && x.direction === 'pharmacy').length,
@@ -1656,27 +1677,31 @@ export function AppModals({
                     </div>
                   )}
 
-                  <div className="gm-google-wrap">
-                    {!(googleConfig?.clientId && gsiLoaded) && (
-                      <button
-                        type="button"
-                        className="gm-google-pill-btn"
-                        disabled={googleLoading}
-                        onClick={() => handleGoogleButtonClick('PHARMACIST')}
-                      >
-                        <ModernGoogleLogoIcon size={18} />
-                        <span>{googleLoading ? 'Connexion Google en cours…' : 'Continuer avec Google'}</span>
-                      </button>
-                    )}
+                  {googleConfig?.clientId && (
+                    <>
+                      <div className="gm-google-wrap">
+                        {!gsiLoaded && (
+                          <button
+                            type="button"
+                            className="gm-google-pill-btn"
+                            disabled={googleLoading}
+                            onClick={() => handleGoogleButtonClick('PHARMACIST')}
+                          >
+                            <ModernGoogleLogoIcon size={18} />
+                            <span>{googleLoading ? 'Connexion Google en cours…' : 'Continuer avec Google'}</span>
+                          </button>
+                        )}
 
-                    {googleConfig?.clientId && gsiLoaded && (
-                      <div ref={gsiButtonPharmacyRef} className="gm-gsi-official-slot" />
-                    )}
-                  </div>
+                        {gsiLoaded && (
+                          <div ref={gsiButtonPharmacyRef} className="gm-gsi-official-slot" />
+                        )}
+                      </div>
 
-                  <div className="gm-divider-line">
-                    <span>ou avec vos identifiants</span>
-                  </div>
+                      <div className="gm-divider-line">
+                        <span>ou avec vos identifiants</span>
+                      </div>
+                    </>
+                  )}
 
                   <div className="gm-pill-input-wrap">
                     <ModernMailEnvelopeIcon size={15} />

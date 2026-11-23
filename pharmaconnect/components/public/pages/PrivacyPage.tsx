@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
-import { SectionTitle } from '@/lib/shared';
+import { ArrowRight } from 'lucide-react';
+import { Language } from '@/lib/translations';
 import {
   ModernDocumentCheckIcon,
-  ModernLivePulseIcon,
   ModernLockSecurityIcon,
   ModernMailEnvelopeIcon,
   ModernUserBadgeIcon,
@@ -13,72 +12,41 @@ import {
 } from '@/components/shared/ModernIcons';
 import { SanteProcheShieldWaveScene } from '@/components/shared/SanteProcheIllustrations';
 
-export function PrivacyPage() {
+export function PrivacyPage({ currentLang = 'fr' }: { currentLang?: Language }) {
+  const isEn = currentLang === 'en';
   return (
-    <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="PROTECTION DES DONNÉES"
-        badge="Chiffrement & Confiance"
-        title="Politique de confidentialité"
-        desc="Comment PharmaConnect protège vos données personnelles et les informations des officines."
-        icon={<ModernLockSecurityIcon size={24} />}
-      />
-
-      {/* Hero harmonisé Helix / Cleargrin — Palette Pine / Menthe */}
-      <section className="hx-hero">
-        <div className="hx-hero-left">
-          <div className="hx-kicker-pill">
-            <ModernLivePulseIcon size={15} />
-            <span>CONFIDENTIALITÉ &amp; SÉCURITÉ DES DONNÉES</span>
-          </div>
-
-          <h1 className="hx-hero-title">
-            Vos Données de Santé{' '}
-            <span className="hx-highlight">Protégées</span>
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/pharmacy-interior.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'DATA PROTECTION & TRUST' : 'PROTECTION DES DONNÉES'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Privacy Policy' : 'Politique de confidentialité'}
           </h1>
-
-          <p className="hx-hero-desc">
-            PharmaConnect applique des principes stricts de minimisation des données, de vérification officielle des officines et de transparence sur leur traitement.
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'How PharmaConnect protects your personal information and partner pharmacy credentials.'
+              : 'Comment PharmaConnect protège vos données personnelles et les informations des officines partenaires.'}
           </p>
-
-          <div className="hx-hero-actions">
-            <a href="#privacy-details" className="cg-btn-pine" style={{ textDecoration: 'none' }}>
-              Consulter nos engagements <ArrowRight size={15} />
+          <div className="luxe-hero-buttons">
+            <a href="#privacy-details" className="luxe-btn luxe-btn-primary" style={{ textDecoration: 'none' }}>
+              {isEn ? 'Our commitments' : 'Consulter nos engagements'} <ArrowRight size={15} />
             </a>
-            <a href="#privacy-dpo" className="hx-video-link" style={{ textDecoration: 'none' }}>
-              <span className="hx-play-circle"><ModernMailEnvelopeIcon size={16} /></span>
-              <span>Contacter notre DPO</span>
+            <a href="#privacy-dpo" className="luxe-btn luxe-btn-outline" style={{ textDecoration: 'none' }}>
+              {isEn ? 'Contact our DPO' : 'Contacter notre DPO'}
             </a>
           </div>
-        </div>
-
-        <div className="hx-hero-right">
-          <div className="hx-hero-backdrop-blob" aria-hidden="true" />
-          <img
-            src="/images/pharmacy-interior.jpg"
-            alt="Protection et confidentialité PharmaConnect"
-            className="hx-hero-doctor-img"
-          />
-
-          <div className="hx-float-card hx-float-top-right">
-            <span className="hx-float-icon mint"><ShieldCheck size={18} /></span>
-            <div>
-              <b>Chiffrement</b>
-              <small>Bout en bout en prod</small>
-            </div>
-          </div>
-
-          <div className="hx-float-card hx-float-bottom-left">
-            <span className="hx-float-icon dark"><ModernUserBadgeIcon size={18} /></span>
-            <div>
-              <b>Zéro obligation</b>
-              <small>Compte visiteur facultatif</small>
-            </div>
-          </div>
-
-          <span className="hx-handwriting">Confiance &amp;<br />Transparence</span>
         </div>
       </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
       {/* 4 Piliers de Confidentialité (Modèle Helix) */}
       <section className="hx-section">
@@ -190,6 +158,7 @@ export function PrivacyPage() {
             <ModernMailEnvelopeIcon size={16} /> Écrire au DPO <ArrowRight size={15} />
           </a>
         </section>
+      </div>
       </div>
     </div>
   );

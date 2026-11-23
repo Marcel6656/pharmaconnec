@@ -205,17 +205,19 @@ export function Header({
   };
 
   useEffect(() => {
-    if (!activeMegaMenu) return;
-    updateCaretPosition(activeMegaMenu);
+    if (!activeMegaMenu && !mobileNavOpen) return;
+    if (activeMegaMenu) updateCaretPosition(activeMegaMenu);
 
     const onDocMouseDown = (event: MouseEvent) => {
       if (shellRef.current && !shellRef.current.contains(event.target as Node)) {
         setActiveMegaMenu(null);
+        setMobileNavOpen(false);
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setActiveMegaMenu(null);
+        setMobileNavOpen(false);
       }
     };
     const onResize = () => {
@@ -230,10 +232,11 @@ export function Header({
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onResize);
     };
-  }, [activeMegaMenu]);
+  }, [activeMegaMenu, mobileNavOpen]);
 
   useEffect(() => {
     setActiveMegaMenu(null);
+    setMobileNavOpen(false);
   }, [page, space]);
 
   const navigateTo = (targetPage: string) => {
@@ -523,7 +526,9 @@ export function Header({
     const filtered =
       activePharmacyTab === 'premium'
         ? pharmacies.filter(p => p.subscription === 'Premium' || p.subscription === 'Standard')
-        : pharmacies;
+        : activePharmacyTab === 'centre'
+          ? pharmacies.filter(p => `${p.city} ${p.area}`.toLowerCase().includes('djamena'))
+          : pharmacies;
     const list = (filtered.length > 0 ? filtered : pharmacies).slice(0, 4);
 
     if (list.length === 0) {
@@ -540,7 +545,9 @@ export function Header({
 
     return list.map((ph, idx) => ({
       title: ph.name,
-      desc: `${ph.area || ph.city} · ${ph.subscription} · ${ph.products} ${isEn ? 'products' : 'produits'}`,
+      desc: [ph.area || ph.city, ph.subscription, `${ph.products} ${isEn ? 'products' : 'produits'}`]
+        .filter(Boolean)
+        .join(' · '),
       icon: idx % 2 === 0 ? <Building2 size={18} /> : <ShieldCheck size={18} />,
       tone: tones[idx % tones.length],
       onClick: () => selectPharmacy(ph.id),
@@ -1001,9 +1008,12 @@ export function Header({
                     className={`mega-side-tab ${activePharmacyTab === tab.key ? 'is-active' : ''}`}
                     onMouseEnter={() => setActivePharmacyTab(tab.key)}
                     onClick={() => {
+                      const wasSame = activePharmacyTab === tab.key;
                       setActivePharmacyTab(tab.key);
-                      if (tab.key === 'geo') triggerGeo();
-                      if (tab.key === 'register') navigateTo('Inscription pharmacie');
+                      if (tab.key === 'all') navigateTo('Pharmacies');
+                      else if (tab.key === 'centre' && wasSame) navigateTo('Pharmacies');
+                      else if (tab.key === 'geo') triggerGeo();
+                      else if (tab.key === 'register') navigateTo('Inscription pharmacie');
                     }}
                   >
                     <span className="mega-side-tab-icon">{tab.icon}</span>

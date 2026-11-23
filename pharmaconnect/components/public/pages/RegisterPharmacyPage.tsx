@@ -1,12 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ArrowRight, CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
-import { SectionTitle } from '@/lib/shared';
+import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { RegistrationForm } from '@/components/shared/RegistrationForm';
+import { Language } from '@/lib/translations';
 import {
-  ModernDigitalStoreIcon,
-  ModernLivePulseIcon,
   ModernSparkleCrownIcon,
   ModernVerifiedShieldIcon,
   ModernWhatsAppIcon,
@@ -19,6 +17,7 @@ interface RegisterPharmacyPageProps {
   registerPharmacy: (e: React.FormEvent) => void;
   existingAccount?: boolean;
   onFilesChange?: (files: File[]) => void;
+  currentLang?: Language;
 }
 
 export function RegisterPharmacyPage({
@@ -27,87 +26,53 @@ export function RegisterPharmacyPage({
   registerPharmacy,
   existingAccount = false,
   onFilesChange,
+  currentLang = 'fr',
 }: RegisterPharmacyPageProps) {
+  const isEn = currentLang === 'en';
   const onboardingWhatsApp = buildWhatsAppUrl(
     '+23566000000',
     'Bonjour équipe PharmaConnect, je souhaite inscrire mon officine et obtenir une assistance.'
   );
 
   return (
-    <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="ESPACE PROFESSIONNEL"
-        badge="Validation sous 24h"
-        title="Inscrire une pharmacie"
-        desc="Créez d’abord un compte professionnel, puis transmettez les informations de l’établissement pour vérification."
-        icon={<ModernDigitalStoreIcon size={24} />}
-      />
-
-      {/* Hero professionnel harmonisé Helix / Cleargrin — Palette Pine / Menthe */}
-      <section className="hx-hero">
-        <div className="hx-hero-left">
-          <div className="hx-kicker-pill">
-            <ModernLivePulseIcon size={15} />
-            <span>ESPACE PROFESSIONNEL · KAYRA INNOVATION</span>
-          </div>
-
-          <h1 className="hx-hero-title">
-            Digitalisez Votre{' '}
-            <span className="hx-highlight">Officine</span> en 3 Étapes
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/cta-pharmacist.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'PROFESSIONAL PORTAL · KAYRA INNOVATION' : 'ESPACE PROFESSIONNEL · KAYRA INNOVATION'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Register Your Pharmacy' : 'Inscrire une pharmacie'}
           </h1>
-
-          <p className="hx-hero-desc">
-            Rejoignez le réseau PharmaConnect, valorisez vos stocks disponibles en temps réel et permettez aux patients de vous contacter par messagerie chiffrée ou WhatsApp.
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Create your professional account, submit pharmacy credentials and enjoy 14 days free trial after validation.'
+              : 'Créez d’abord un compte professionnel, transmettez vos justificatifs et profitez de 14 jours d’essai gratuit après validation.'}
           </p>
-
-          <div className="hx-hero-actions">
-            <a href="#wizard-registration-section" className="cg-btn-pine" style={{ textDecoration: 'none' }}>
-              Commencer l’inscription <ArrowRight size={15} />
+          <div className="luxe-hero-buttons">
+            <a href="#wizard-registration-section" className="luxe-btn luxe-btn-primary" style={{ textDecoration: 'none' }}>
+              {isEn ? 'Start registration' : 'Commencer l’inscription'} <ArrowRight size={15} />
             </a>
             <a
               href={onboardingWhatsApp}
               target="_blank"
               rel="noreferrer"
-              className="cg-whatsapp-chip"
-              style={{ padding: '11px 20px', minHeight: 44, fontSize: 13.5 }}
+              className="luxe-btn luxe-btn-outline"
+              style={{ textDecoration: 'none' }}
             >
-              <ModernWhatsAppIcon size={16} /> Assistance WhatsApp
+              <ModernWhatsAppIcon size={16} /> {isEn ? 'WhatsApp Support' : 'Assistance WhatsApp'}
             </a>
           </div>
         </div>
-
-        <div className="hx-hero-right">
-          <div className="hx-hero-backdrop-blob" aria-hidden="true" />
-          <img
-            src="/images/cta-pharmacist.jpg"
-            alt="Pharmacien partenaire PharmaConnect"
-            className="hx-hero-doctor-img"
-          />
-
-          <div className="hx-float-card hx-float-top-right">
-            <span className="hx-float-icon mint"><ModernSparkleCrownIcon size={18} /></span>
-            <div>
-              <b>14 Jours</b>
-              <small>Essai gratuit complet</small>
-            </div>
-          </div>
-
-          <div className="hx-float-card hx-float-bottom-left">
-            <span className="hx-float-icon dark"><ShieldCheck size={18} /></span>
-            <div>
-              <b>Validation 24h</b>
-              <small>Badge officiel vérifié</small>
-            </div>
-          </div>
-
-          <div className="hx-side-visual-card" aria-hidden="true">
-            <img src="/images/pharmacy-1.jpg" alt="" />
-            <span className="hx-side-orb">+</span>
-          </div>
-
-          <span className="hx-handwriting">Votre Officine,<br />En Ligne</span>
-        </div>
       </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
       {/* 4 Piliers / Statistiques d'accompagnement (Modèle Helix) */}
       <section className="hx-stats-bar">
@@ -152,6 +117,7 @@ export function RegisterPharmacyPage({
           existingAccount={existingAccount}
           onFilesChange={onFilesChange}
         />
+      </div>
       </div>
     </div>
   );

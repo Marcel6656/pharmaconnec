@@ -154,6 +154,7 @@ export class StateService {
           responsible: ph.responsible,
           lat: ph.lat ?? undefined,
           lng: ph.lng ?? undefined,
+          openingHours: ph.openingHours ?? undefined,
           status: ph.status,
           badgeIds: exposedBadges.map(b => b.badgeId),
           products: productCounts.get(ph.id) ?? 0,

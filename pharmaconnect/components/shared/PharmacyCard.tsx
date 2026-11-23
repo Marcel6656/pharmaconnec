@@ -22,7 +22,11 @@ interface PharmacyCardProps {
 
 export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCardProps) {
   const allBadges = activeBadges(pharmacy, badges);
-  const is24h = allBadges.some(b => b.name.toLowerCase().includes('garde') || b.name.toLowerCase().includes('24'));
+  const hoursLower = (pharmacy.openingHours || '').toLowerCase();
+  const is24h =
+    allBadges.some(b => b.name.toLowerCase().includes('garde') || b.name.toLowerCase().includes('24')) ||
+    hoursLower.includes('24h') ||
+    hoursLower.includes('garde');
   const coverSrc = getPharmacyCoverImage(pharmacy);
 
   return (

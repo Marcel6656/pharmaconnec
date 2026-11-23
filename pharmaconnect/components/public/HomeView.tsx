@@ -6,6 +6,7 @@ import { AppData, isPharmacyActiveAndValid, money, officialCategories, Product }
 import { getCategoryImage, getProductImage } from '@/lib/media';
 import { PharmacyCard } from '@/components/shared/PharmacyCard';
 import { Language, translations } from '@/lib/translations';
+import type { HealthSubPage } from '@/components/public/pages/HealthAlertsPage';
 import {
   ModernWhatsAppIcon,
   buildWhatsAppUrl,
@@ -23,6 +24,8 @@ interface HomeViewProps {
   setModal: (m: any) => void;
   setExistingAccountRegistration: (v: boolean) => void;
   currentLang?: Language;
+  onOpenHealthSubPage?: (sub: HealthSubPage) => void;
+  onContactProduct?: (pharmacyId: number, productId: number | null) => void;
 }
 
 export function HomeView({
@@ -37,6 +40,8 @@ export function HomeView({
   setModal,
   setExistingAccountRegistration,
   currentLang = 'fr',
+  onOpenHealthSubPage,
+  onContactProduct,
 }: HomeViewProps) {
   const [selectedCat, setSelectedCat] = useState('Toutes les catégories');
   const [productFilter, setProductFilter] = useState('Tout');
@@ -65,21 +70,27 @@ export function HomeView({
   };
 
   const serviceDescriptionsFr: Record<string, string> = {
-    'Médicaments': 'Traitements courants et spécialités pharmaceutiques publiés par des officines vérifiées.',
-    'Vitamines': 'Compléments nutritionnels, micronutrition et formules immunité pour toute la famille.',
-    'Parapharmacie': 'Dermo-cosmétique, soins quotidiens et produits d’accompagnement officinal.',
-    'Hygiène': 'Solutions antiseptiques, protection et hygiène médicale certifiée.',
-    'Bébé & Maternité': 'Soins pédiatriques, laits infantiles et produits de maternité contrôlés.',
-    'Matériel médical': 'Dispositifs de diagnostic, thermomètres, tensiomètres et suivi à domicile.',
+    'médicaments': 'Traitements courants et spécialités pharmaceutiques publiés par des officines vérifiées.',
+    'vitamines': 'Compléments nutritionnels, micronutrition et formules immunité pour toute la famille.',
+    'parapharmacie': 'Dermo-cosmétique, soins quotidiens et produits d’accompagnement officinal.',
+    'hygiène': 'Solutions antiseptiques, protection et hygiène médicale certifiée.',
+    'bébé & maternité': 'Soins pédiatriques, laits infantiles et produits de maternité contrôlés.',
+    'matériel médical': 'Dispositifs de diagnostic, thermomètres, tensiomètres et suivi à domicile.',
   };
 
   const serviceDescriptionsEn: Record<string, string> = {
-    'Médicaments': 'Essential treatments and certified pharmaceutical references from trusted pharmacies.',
-    'Vitamines': 'Vitamins, immunity boosters and daily nutritional supplements.',
-    'Parapharmacie': 'Dermatological skincare and everyday pharmacy wellness essentials.',
-    'Hygiène': 'Certified antiseptics, masks and daily hygiene protection.',
-    'Bébé & Maternité': 'Pediatric care, infant formulas and maternity essentials.',
-    'Matériel médical': 'Precision diagnostic tools, thermometers and home monitoring devices.',
+    'médicaments': 'Essential treatments and certified pharmaceutical references from trusted pharmacies.',
+    'vitamines': 'Vitamins, immunity boosters and daily nutritional supplements.',
+    'parapharmacie': 'Dermatological skincare and everyday pharmacy wellness essentials.',
+    'hygiène': 'Certified antiseptics, masks and daily hygiene protection.',
+    'bébé & maternité': 'Pediatric care, infant formulas and maternity essentials.',
+    'matériel médical': 'Precision diagnostic tools, thermometers and home monitoring devices.',
+  };
+
+  const getCategoryDescription = (cat: string) => {
+    const key = cat.trim().toLowerCase();
+    return (isEn ? serviceDescriptionsEn[key] : serviceDescriptionsFr[key]) ||
+      (isEn ? 'Verified references declared by partner pharmacies.' : 'Références contrôlées et publiées par les officines agréées.');
   };
 
   return (
@@ -235,10 +246,7 @@ export function HomeView({
                   <img src={getCategoryImage(cat)} alt={cat} />
                 </div>
                 <h3>{cat}</h3>
-                <p>
-                  {(isEn ? serviceDescriptionsEn[cat] : serviceDescriptionsFr[cat]) ||
-                    (isEn ? 'Verified references declared by partner pharmacies.' : 'Références contrôlées et publiées par les officines agréées.')}
-                </p>
+                <p>{getCategoryDescription(cat)}</p>
                 <button
                   type="button"
                   className="luxe-inline-link"
@@ -269,16 +277,24 @@ export function HomeView({
           </div>
 
           <div className="luxe-filter-bar">
-            {['Tout', 'En stock', ...categories.slice(0, 4)].map(tab => (
-              <button
-                key={tab}
-                type="button"
-                className={`luxe-filter-btn ${productFilter === tab ? 'active' : ''}`}
-                onClick={() => setProductFilter(tab)}
-              >
-                {tab}
-              </button>
-            ))}
+            {['Tout', 'En stock', ...categories.slice(0, 4)].map(tab => {
+              const label =
+                isEn && tab === 'Tout'
+                  ? 'All'
+                  : isEn && tab === 'En stock'
+                    ? 'In Stock'
+                    : tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`luxe-filter-btn ${productFilter === tab ? 'active' : ''}`}
+                  onClick={() => setProductFilter(tab)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           {filteredHomeProducts.length > 0 ? (
@@ -290,14 +306,16 @@ export function HomeView({
                     <div className="mc-product-media">
                       <img src={getProductImage(p)} alt={p.name} className="pc-zoom-media" />
                       <span className={p.stock > 0 ? 'mc-stock-badge in' : 'mc-stock-badge out'}>
-                        {p.stock > 0 ? `${p.stock} en stock` : 'Indisponible'}
+                        {p.stock > 0
+                          ? (isEn ? `${p.stock} in stock` : `${p.stock} en stock`)
+                          : (isEn ? 'Out of stock' : 'Indisponible')}
                       </span>
                     </div>
                     <div className="mc-product-body">
                       <span className="mc-product-cat">{p.category}</span>
                       <h3>{p.name}</h3>
                       <small className="mc-product-brand">
-                        {p.brand ? `${p.brand} · ` : ''}{ph?.name || 'Officine vérifiée'}
+                        {p.brand ? `${p.brand} · ` : ''}{ph?.name || (isEn ? 'Verified pharmacy' : 'Officine vérifiée')}
                       </small>
                       <div className="mc-price-line">
                         <b>{money(p.price)}</b>
@@ -309,7 +327,7 @@ export function HomeView({
                             go('Fiche pharmacie');
                           }}
                         >
-                          <MapPin size={12} /> {ph?.area || ph?.city || 'Voir officine'}
+                          <MapPin size={12} /> {ph?.area || ph?.city || (isEn ? 'View pharmacy' : 'Voir officine')}
                         </button>
                       </div>
                       <div className="mc-card-actions">
@@ -317,9 +335,13 @@ export function HomeView({
                           type="button"
                           className="mc-outline-pill-btn"
                           onClick={() => {
-                            setSelectedPharmacy(p.pharmacyId);
-                            setSelectedProduct(p.id);
-                            setModal('message');
+                            if (onContactProduct) {
+                              onContactProduct(p.pharmacyId, p.id);
+                            } else {
+                              setSelectedPharmacy(p.pharmacyId);
+                              setSelectedProduct(p.id);
+                              setModal('message');
+                            }
                           }}
                         >
                           {isEn ? 'Ask pharmacy' : 'Contacter'}
@@ -556,7 +578,11 @@ export function HomeView({
                     ? 'Why checking active ingredients and pharmacist guidance prevents interactions.'
                     : 'Pourquoi vérifier la composition et demander conseil au pharmacien évite les interactions.'}
                 </p>
-                <button type="button" className="luxe-inline-link" onClick={() => go('Rubrique Santé')}>
+                <button
+                  type="button"
+                  className="luxe-inline-link"
+                  onClick={() => (onOpenHealthSubPage ? onOpenHealthSubPage('alerts') : go('Rubrique Santé'))}
+                >
                   {isEn ? 'Read More' : 'Lire la rubrique'} <ArrowRight size={14} />
                 </button>
               </div>
@@ -577,7 +603,11 @@ export function HomeView({
                     ? 'Key vitamins, hydration and preventive habits recommended by community pharmacists.'
                     : 'Les apports essentiels et réflexes de prévention recommandés par nos pharmaciens.'}
                 </p>
-                <button type="button" className="luxe-inline-link" onClick={() => go('Rubrique Santé')}>
+                <button
+                  type="button"
+                  className="luxe-inline-link"
+                  onClick={() => (onOpenHealthSubPage ? onOpenHealthSubPage('news') : go('Rubrique Santé'))}
+                >
                   {isEn ? 'Read More' : 'Lire la rubrique'} <ArrowRight size={14} />
                 </button>
               </div>

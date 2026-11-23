@@ -6,6 +6,8 @@ import {
   AppData, money, isPharmacyActiveAndValid, isProductFresh,
   Status, activeBadges, BadgeGlyph, Empty
 } from '@/lib/shared';
+import { getPharmacyCoverImage, getProductImage } from '@/lib/media';
+import { Language } from '@/lib/translations';
 import {
   ModernAlertWarningIcon,
   ModernChatEncryptedIcon,
@@ -33,6 +35,8 @@ interface PharmacyDetailViewProps {
   go: (p: string) => void;
   favoritePharmacyIds?: number[];
   toggleFavoritePharmacy?: (id: number) => void;
+  onContactProduct?: (pharmacyId: number, productId: number | null) => void;
+  currentLang?: Language;
 }
 
 export function PharmacyDetailView({
@@ -45,12 +49,30 @@ export function PharmacyDetailView({
   go,
   favoritePharmacyIds = [],
   toggleFavoritePharmacy,
+  onContactProduct,
+  currentLang = 'fr',
 }: PharmacyDetailViewProps) {
   const [localFav, setLocalFav] = useState(false);
   const [copied, setCopied] = useState(false);
+  const isEn = currentLang === 'en';
   const p = data.pharmacies.find(x => x.id === selectedPharmacy && isPharmacyActiveAndValid(x));
-  if (!p) return <Empty title="Établissement introuvable" detail="Cette fiche n’est pas disponible au public actuellement." />;
+  if (!p) {
+    return (
+      <div className="cg-page-container animate-fade-in">
+        <Empty
+          title={isEn ? 'Pharmacy not found' : 'Établissement introuvable'}
+          detail={isEn ? 'This pharmacy profile is not publicly available.' : 'Cette fiche n’est pas disponible au public actuellement.'}
+          action={
+            <button type="button" className="luxe-btn luxe-btn-primary" onClick={() => go('Pharmacies')}>
+              {isEn ? 'Back to directory' : 'Retour à l’annuaire'}
+            </button>
+          }
+        />
+      </div>
+    );
+  }
   const favorite = toggleFavoritePharmacy ? favoritePharmacyIds.includes(p.id) : localFav;
+  const coverSrc = getPharmacyCoverImage(p);
 
   const items = data.products.filter(
     x => x.pharmacyId === p.id && x.status === 'Publié' && isProductFresh(x.stockUpdatedAt ?? x.updated, data.freshnessDays)
@@ -67,7 +89,7 @@ export function PharmacyDetailView({
         <div className="sp-establishment-hero">
           <div className="sp-establishment-cover">
             <img
-              src={p.coverImage || '/images/pharmacy-1.jpg'}
+              src={coverSrc}
               alt={p.name}
               className="sp-establishment-cover-img"
             />
@@ -77,16 +99,17 @@ export function PharmacyDetailView({
             {/* Barre de navigation flottante verre dépoli */}
             <div className="sp-establishment-topbar">
               <button className="sp-glass-top-btn" onClick={() => go('Pharmacies')}>
-                <ArrowLeft size={15} /> Retour à l’annuaire
+                <ArrowLeft size={15} /> {isEn ? 'Back to directory' : 'Retour à l’annuaire'}
               </button>
               <div className="sp-establishment-top-right">
                 <button
                   type="button"
                   className="sp-glass-circle-btn"
-                  title="Partager la fiche"
+                  title={isEn ? 'Share pharmacy' : 'Partager la fiche'}
                   onClick={() => {
-                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                      navigator.clipboard.writeText(window.location.href).catch(() => { });
+                    if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                      const shareUrl = `${window.location.origin}/?page=fiche-pharmacie&pharmacy=${p.id}`;
+                      navigator.clipboard.writeText(shareUrl).catch(() => { });
                     }
                     setCopied(true);
                     setTimeout(() => setCopied(false), 1800);
@@ -104,14 +127,14 @@ export function PharmacyDetailView({
                 </button>
               </div>
             </div>
-            {copied && <span className="sp-copied-badge">Lien copié !</span>}
+            {copied && <span className="sp-copied-badge">{isEn ? 'Link copied!' : 'Lien copié !'}</span>}
           </div>
 
           <div className="sp-establishment-sheet">
             <div className="sp-sheet-top-row">
               <div className="sp-sheet-identity">
                 <div className="sp-sheet-avatar">
-                  <img src={p.coverImage || '/images/pharmacy-interior.jpg'} alt={p.name} />
+                  <img src={coverSrc} alt={p.name} />
                 </div>
                 <div>
                   <div className="sp-sheet-title-line">
@@ -142,12 +165,16 @@ export function PharmacyDetailView({
               <button
                 className="cg-btn-pine"
                 onClick={() => {
-                  setSelectedProduct(null);
-                  setModal('message');
-                  setMessageForm({ sender: '', phone: '', subject: 'Demande d’information', body: '' });
+                  if (onContactProduct) {
+                    onContactProduct(p.id, null);
+                  } else {
+                    setSelectedProduct(null);
+                    setModal('message');
+                    setMessageForm({ sender: '', phone: '', subject: 'Demande d’information', body: '' });
+                  }
                 }}
               >
-                <ModernChatEncryptedIcon size={16} /> Contacter l’officine <ArrowRight size={14} />
+                <ModernChatEncryptedIcon size={16} /> {isEn ? 'Message pharmacy' : 'Contacter l’officine'} <ArrowRight size={14} />
               </button>
             </div>
 
@@ -177,9 +204,13 @@ export function PharmacyDetailView({
                 type="button"
                 className="sp-quick-action-btn"
                 onClick={() => {
-                  setSelectedProduct(null);
-                  setModal('message');
-                  setMessageForm({ sender: '', phone: '', subject: 'Disponibilité produit', body: '' });
+                  if (onContactProduct) {
+                    onContactProduct(p.id, null);
+                  } else {
+                    setSelectedProduct(null);
+                    setModal('message');
+                    setMessageForm({ sender: '', phone: '', subject: 'Disponibilité produit', body: '' });
+                  }
                 }}
               >
                 <span className="sp-action-orb teal"><ModernChatEncryptedIcon size={19} /></span>
@@ -272,18 +303,34 @@ export function PharmacyDetailView({
               {items.map(x => (
                 <div key={x.id} className="cg-mini-item">
                   <span className="mini-product-icon">
-                    {x.imageDataUrl ? (
-                      <img src={x.imageDataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
-                    ) : (
-                      <ModernPackageBoxIcon size={18} />
-                    )}
+                    <img
+                      src={getProductImage(x)}
+                      alt={x.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                    />
                   </span>
                   <div>
                     <b>{x.name}</b>
-                    <small>{x.brand} · {x.stock > 0 ? `Disponible (stock: ${x.stock})` : 'Indisponible'} · actualisé {x.updated}</small>
+                    <small>{x.brand} · {x.stock > 0 ? (isEn ? `In stock: ${x.stock}` : `Disponible (stock: ${x.stock})`) : (isEn ? 'Out of stock' : 'Indisponible')} · {x.updated}</small>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <strong className="cg-mini-price">{money(x.price)}</strong>
+                    <button
+                      type="button"
+                      className="mc-outline-pill-btn"
+                      style={{ padding: '5px 10px', fontSize: 12 }}
+                      onClick={() => {
+                        if (onContactProduct) {
+                          onContactProduct(p.id, x.id);
+                        } else {
+                          setSelectedPharmacy(p.id);
+                          setSelectedProduct(x.id);
+                          setModal('message');
+                        }
+                      }}
+                    >
+                      {isEn ? 'Ask' : 'Demander'}
+                    </button>
                     <a
                       href={buildWhatsAppUrl(p.phone, `Bonjour ${p.name}, le produit "${x.name}" est-il disponible ?`)}
                       target="_blank"

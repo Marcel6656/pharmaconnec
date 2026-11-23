@@ -15,11 +15,14 @@ import {
   Sparkles,
   Stethoscope,
 } from 'lucide-react';
-import { SectionTitle } from '@/lib/shared';
+import { Empty } from '@/lib/shared';
 import { PageTransitionStage } from '@/components/shared/MotionStage';
 import { Language } from '@/lib/translations';
 import {
   AlertSeverity,
+  DEFAULT_EMERGENCY_NUMBERS,
+  DEFAULT_HEALTH_ALERTS,
+  DEFAULT_HEALTH_NEWS,
   EmergencyCategory,
   EmergencyNumberItem,
   HealthAlertItem,
@@ -63,15 +66,23 @@ export function HealthAlertsPage({
     onSubPageChange?.(sub);
   };
 
-  const [alertsList, setAlertsList] = useState<HealthAlertItem[]>([]);
-  const [newsList, setNewsList] = useState<HealthNewsItem[]>([]);
-  const [numbersList, setNumbersList] = useState<EmergencyNumberItem[]>([]);
+  const [alertsList, setAlertsList] = useState<HealthAlertItem[]>(() =>
+    DEFAULT_HEALTH_ALERTS.filter(a => a.active !== false),
+  );
+  const [newsList, setNewsList] = useState<HealthNewsItem[]>(() =>
+    DEFAULT_HEALTH_NEWS.filter(n => n.active !== false).map(n =>
+      n.targetCategory === 'Vitamines & bien-être' ? { ...n, targetCategory: 'Vitamines' } : n,
+    ),
+  );
+  const [numbersList, setNumbersList] = useState<EmergencyNumberItem[]>(() =>
+    DEFAULT_EMERGENCY_NUMBERS.filter(e => e.active !== false),
+  );
 
   const [emergencyCat, setEmergencyCat] = useState<EmergencyCategory>('all');
   const [alertSeverity, setAlertSeverity] = useState<AlertSeverity>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [expandedNewsId, setExpandedNewsId] = useState<string | null>(DEFAULT_HEALTH_NEWS[0]?.id ?? null);
 
   useEffect(() => {
     let active = true;
@@ -80,20 +91,24 @@ export function HealthAlertsPage({
       .then((payload) => {
         if (!active || !payload) return;
         if (Array.isArray(payload.alerts)) {
-          setAlertsList(payload.alerts.filter((a: HealthAlertItem) => a.active !== false));
+          const activeAlerts = payload.alerts.filter((a: HealthAlertItem) => a.active !== false);
+          if (activeAlerts.length > 0) setAlertsList(activeAlerts);
         }
         if (Array.isArray(payload.news)) {
           const visibleNews = payload.news.filter((n: HealthNewsItem) => n.active !== false);
-          setNewsList(visibleNews);
-          if (visibleNews[0]?.id) {
-            setExpandedNewsId(prev => (visibleNews.some((n: HealthNewsItem) => n.id === prev) ? prev : visibleNews[0].id));
+          if (visibleNews.length > 0) {
+            setNewsList(visibleNews);
+            if (visibleNews[0]?.id) {
+              setExpandedNewsId(prev => (visibleNews.some((n: HealthNewsItem) => n.id === prev) ? prev : visibleNews[0].id));
+            }
           }
         }
         if (Array.isArray(payload.emergencyNumbers)) {
-          setNumbersList(payload.emergencyNumbers.filter((e: EmergencyNumberItem) => e.active !== false));
+          const activeNumbers = payload.emergencyNumbers.filter((e: EmergencyNumberItem) => e.active !== false);
+          if (activeNumbers.length > 0) setNumbersList(activeNumbers);
         }
       })
-      .catch(() => { /* Aucun contenu publié disponible. */ });
+      .catch(() => { /* Garde le contenu santé par défaut. */ });
     return () => { active = false; };
   }, []);
 
@@ -189,30 +204,46 @@ export function HealthAlertsPage({
   };
 
   return (
-    <div className="cg-page-container animate-fade-in">
-      <div className="pc-nested-breadcrumb" aria-label={isEn ? 'Breadcrumb' : 'Fil d’Ariane'}>
-        <button type="button" onClick={() => go('Accueil')}>
-          {isEn ? 'Home' : 'Accueil'}
-        </button>
-        <ChevronRight size={14} />
-        <button type="button" onClick={() => selectSubPage('alerts')}>
-          {isEn ? 'Health Section' : 'Rubrique Santé'}
-        </button>
-        <ChevronRight size={14} />
-        <span>{isEn ? activeMeta.labelEn : activeMeta.labelFr}</span>
-      </div>
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/hero-cinema-care.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <div className="pc-nested-breadcrumb luxe-hero-breadcrumb" aria-label={isEn ? 'Breadcrumb' : 'Fil d’Ariane'}>
+            <button type="button" onClick={() => go('Accueil')}>
+              {isEn ? 'Home' : 'Accueil'}
+            </button>
+            <ChevronRight size={14} />
+            <button type="button" onClick={() => selectSubPage('alerts')}>
+              {isEn ? 'Health Section' : 'Rubrique Santé'}
+            </button>
+            <ChevronRight size={14} />
+            <span>{isEn ? activeMeta.labelEn : activeMeta.labelFr}</span>
+          </div>
 
-      <SectionTitle
-        eyebrow={isEn ? 'HEALTH WATCH, NEWS & HOTLINES' : 'VEILLE SANITAIRE, INFORMATION & SECOURS'}
-        badge={isEn ? '3 nested pages' : '3 pages imbriquées'}
-        title={isEn ? 'Health Section' : 'Rubrique Santé'}
-        desc={
-          isEn
-            ? 'Browse nested sub-pages for active health alerts, practical health news, and verified emergency toll-free numbers.'
-            : 'Naviguez entre les pages imbriquées : alertes sanitaires en cours, actualités de prévention et annuaire des numéros d’urgence « Numéro Vert ».'
-        }
-        icon={<ModernBellAlertIcon size={24} />}
-      />
+          <span className="luxe-section-subtitle">
+            {isEn ? 'HEALTH WATCH, NEWS & HOTLINES' : 'VEILLE SANITAIRE, INFORMATION & SECOURS'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Health Section' : 'Rubrique Santé'}
+          </h1>
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Browse active health alerts, practical health news, and verified emergency toll-free numbers.'
+              : 'Naviguez entre les alertes sanitaires en cours, actualités de prévention et numéros d’urgence « Numéro Vert ».'}
+          </p>
+          <span className="luxe-inner-count-pill">
+            <ModernBellAlertIcon size={15} />
+            {alertsList.length + newsList.length + numbersList.length} {isEn ? 'published resources' : 'ressources publiées'}
+          </span>
+        </div>
+      </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 24 }}>
 
       {/* Barre de navigation des 3 sous-pages imbriquées */}
       <nav className="pc-nested-subnav" aria-label={isEn ? 'Health Section Sub-Pages' : 'Sous-pages de la Rubrique Santé'}>
@@ -291,55 +322,62 @@ export function HealthAlertsPage({
             </div>
           </div>
 
-          <div className="pc-vigilance-grid">
-            {filteredAlerts.map(alert => (
-              <article key={alert.id} className={`pc-vigilance-card is-${alert.severity}`}>
-                <div className="pc-alert-media">
-                  <img
-                    src={alert.image || '/images/hero-cinema-medicines.jpg'}
-                    alt={isEn ? (alert.imageAltEn || alert.titleEn) : (alert.imageAltFr || alert.titleFr)}
-                    loading="lazy"
-                  />
-                  <div className="pc-alert-media-overlay">
-                    <span className={`pc-severity-pill is-${alert.severity}`}>
-                      <ShieldAlert size={13} />
-                      {alert.severity === 'urgent'
-                        ? (isEn ? 'URGENT VIGILANCE' : 'VIGILANCE PRIORITAIRE')
-                        : alert.severity === 'vigilance'
-                          ? (isEn ? 'MEDICAL WATCH' : 'VEILLE SANITAIRE')
-                          : (isEn ? 'PREVENTION' : 'PRÉVENTION')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pc-vigilance-body">
-                  <div className="pc-vigilance-meta">
-                    <span className="pc-vigilance-scope">{isEn ? alert.scopeEn : alert.scopeFr}</span>
-                    <span className="pc-vigilance-date">{isEn ? alert.dateEn : alert.dateFr}</span>
-                  </div>
-
-                  <h3>{isEn ? alert.titleEn : alert.titleFr}</h3>
-                  <p className="pc-vigilance-summary">{isEn ? alert.summaryEn : alert.summaryFr}</p>
-
-                  <div className="pc-vigilance-advice">
-                    <ModernClipboardStockIcon size={15} />
-                    <span>{isEn ? alert.adviceEn : alert.adviceFr}</span>
+          {filteredAlerts.length === 0 ? (
+            <Empty
+              title={isEn ? 'No matching health alerts' : 'Aucune alerte correspondante'}
+              detail={isEn ? 'Try clearing the filter or search term.' : 'Réinitialisez le filtre ou la recherche pour revoir toutes les alertes.'}
+            />
+          ) : (
+            <div className="pc-vigilance-grid">
+              {filteredAlerts.map(alert => (
+                <article key={alert.id} className={`pc-vigilance-card is-${alert.severity}`}>
+                  <div className="pc-alert-media">
+                    <img
+                      src={alert.image || '/images/hero-cinema-medicines.jpg'}
+                      alt={isEn ? (alert.imageAltEn || alert.titleEn) : (alert.imageAltFr || alert.titleFr)}
+                      loading="lazy"
+                    />
+                    <div className="pc-alert-media-overlay">
+                      <span className={`pc-severity-pill is-${alert.severity}`}>
+                        <ShieldAlert size={13} />
+                        {alert.severity === 'urgent'
+                          ? (isEn ? 'URGENT VIGILANCE' : 'VIGILANCE PRIORITAIRE')
+                          : alert.severity === 'vigilance'
+                            ? (isEn ? 'MEDICAL WATCH' : 'VEILLE SANITAIRE')
+                            : (isEn ? 'PREVENTION' : 'PRÉVENTION')}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="pc-vigilance-footer">
-                    <button
-                      type="button"
-                      className="pc-vigilance-link"
-                      onClick={() => openCategoryCatalog(alert.targetCategory, alert.targetPage)}
-                    >
-                      <span>{isEn ? alert.actionLabelEn : alert.actionLabelFr}</span>
-                      <ArrowRight size={14} />
-                    </button>
+                  <div className="pc-vigilance-body">
+                    <div className="pc-vigilance-meta">
+                      <span className="pc-vigilance-scope">{isEn ? alert.scopeEn : alert.scopeFr}</span>
+                      <span className="pc-vigilance-date">{isEn ? alert.dateEn : alert.dateFr}</span>
+                    </div>
+
+                    <h3>{isEn ? alert.titleEn : alert.titleFr}</h3>
+                    <p className="pc-vigilance-summary">{isEn ? alert.summaryEn : alert.summaryFr}</p>
+
+                    <div className="pc-vigilance-advice">
+                      <ModernClipboardStockIcon size={15} />
+                      <span>{isEn ? alert.adviceEn : alert.adviceFr}</span>
+                    </div>
+
+                    <div className="pc-vigilance-footer">
+                      <button
+                        type="button"
+                        className="pc-vigilance-link"
+                        onClick={() => openCategoryCatalog(alert.targetCategory, alert.targetPage)}
+                      >
+                        <span>{isEn ? alert.actionLabelEn : alert.actionLabelFr}</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -358,78 +396,85 @@ export function HealthAlertsPage({
             </button>
           </div>
 
-          <div className="pc-news-grid">
-            {filteredNews.map(news => {
-              const isOpen = expandedNewsId === news.id;
-              const points = isEn ? news.keyPointsEn : news.keyPointsFr;
-              return (
-                <article key={news.id} className={`pc-news-card ${isOpen ? 'is-expanded' : ''}`}>
-                  <div className="pc-news-media">
-                    <img
-                      src={news.image || '/images/hero-smile.jpg'}
-                      alt={isEn ? (news.imageAltEn || news.titleEn) : (news.imageAltFr || news.titleFr)}
-                      loading="lazy"
-                    />
-                    <div className="pc-news-media-overlay">
-                      <span className="pc-news-tag">
-                        <Newspaper size={13} />
-                        {isEn ? news.tagEn : news.tagFr}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pc-news-body">
-                    <div className="pc-news-top">
-                      <span className="pc-news-meta">
-                        {isEn ? news.dateEn : news.dateFr} · {news.readTime}
-                      </span>
-                    </div>
-
-                    <h3>{isEn ? news.titleEn : news.titleFr}</h3>
-                    <p className="pc-news-excerpt">{isEn ? news.excerptEn : news.excerptFr}</p>
-
-                    {isOpen && points.length > 0 && (
-                      <ul className="pc-news-points">
-                        {points.map((pt, idx) => (
-                          <li key={idx}>
-                            <Check size={14} />
-                            <span>{pt}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <div className="pc-news-actions">
-                      <button
-                        type="button"
-                        className="pc-news-toggle"
-                        aria-expanded={isOpen}
-                        onClick={() => setExpandedNewsId(isOpen ? null : news.id)}
-                      >
-                        <span>
-                          {isOpen
-                            ? (isEn ? 'Hide key guidance' : 'Réduire les conseils')
-                            : (isEn ? 'Read key recommendations' : 'Lire les recommandations')}
+          {filteredNews.length === 0 ? (
+            <Empty
+              title={isEn ? 'No matching articles' : 'Aucun dossier trouvé'}
+              detail={isEn ? 'Clear your search query to view all health news.' : 'Effacez votre recherche pour consulter toutes les actualités santé.'}
+            />
+          ) : (
+            <div className="pc-news-grid">
+              {filteredNews.map(news => {
+                const isOpen = expandedNewsId === news.id;
+                const points = isEn ? news.keyPointsEn : news.keyPointsFr;
+                return (
+                  <article key={news.id} className={`pc-news-card ${isOpen ? 'is-expanded' : ''}`}>
+                    <div className="pc-news-media">
+                      <img
+                        src={news.image || '/images/hero-smile.jpg'}
+                        alt={isEn ? (news.imageAltEn || news.titleEn) : (news.imageAltFr || news.titleFr)}
+                        loading="lazy"
+                      />
+                      <div className="pc-news-media-overlay">
+                        <span className="pc-news-tag">
+                          <Newspaper size={13} />
+                          {isEn ? news.tagEn : news.tagFr}
                         </span>
-                        {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                      </button>
+                      </div>
+                    </div>
 
-                      {news.targetCategory && (
+                    <div className="pc-news-body">
+                      <div className="pc-news-top">
+                        <span className="pc-news-meta">
+                          {isEn ? news.dateEn : news.dateFr} · {news.readTime}
+                        </span>
+                      </div>
+
+                      <h3>{isEn ? news.titleEn : news.titleFr}</h3>
+                      <p className="pc-news-excerpt">{isEn ? news.excerptEn : news.excerptFr}</p>
+
+                      {isOpen && points.length > 0 && (
+                        <ul className="pc-news-points">
+                          {points.map((pt, idx) => (
+                            <li key={idx}>
+                              <Check size={14} />
+                              <span>{pt}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="pc-news-actions">
                         <button
                           type="button"
-                          className="pc-news-cat-btn"
-                          onClick={() => openCategoryCatalog(news.targetCategory, 'Produits')}
+                          className="pc-news-toggle"
+                          aria-expanded={isOpen}
+                          onClick={() => setExpandedNewsId(isOpen ? null : news.id)}
                         >
-                          <span>{news.targetCategory}</span>
-                          <ArrowRight size={13} />
+                          <span>
+                            {isOpen
+                              ? (isEn ? 'Hide key guidance' : 'Réduire les conseils')
+                              : (isEn ? 'Read key recommendations' : 'Lire les recommandations')}
+                          </span>
+                          {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                         </button>
-                      )}
+
+                        {news.targetCategory && (
+                          <button
+                            type="button"
+                            className="pc-news-cat-btn"
+                            onClick={() => openCategoryCatalog(news.targetCategory, 'Produits')}
+                          >
+                            <span>{news.targetCategory}</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -465,9 +510,14 @@ export function HealthAlertsPage({
             </div>
 
             {filteredNumbers.length === 0 && (
-              <p role="status">{numbersList.length
-                ? (isEn ? 'No matching services.' : 'Aucun service ne correspond à votre recherche.')
-                : (isEn ? 'No emergency numbers have been published.' : 'Aucun numéro d’urgence publié.')}</p>
+              <Empty
+                title={isEn ? 'No matching services' : 'Aucun numéro correspondant'}
+                detail={
+                  numbersList.length
+                    ? (isEn ? 'Try another filter or search term.' : 'Aucun service ne correspond à votre recherche.')
+                    : (isEn ? 'No emergency numbers have been published.' : 'Aucun numéro d’urgence publié.')
+                }
+              />
             )}
             <div className="pc-emergency-grid">
               {filteredNumbers.map(item => (
@@ -532,6 +582,7 @@ export function HealthAlertsPage({
         </div>
       )}
       </PageTransitionStage>
+      </div>
     </div>
   );
 }

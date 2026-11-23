@@ -13,6 +13,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   'Parapharmacie': '/images/cat-parapharmacie.jpg',
   'Hygiène': '/images/cat-hygiene.jpg',
   'Bébé & Maternité': '/images/cat-bebe.jpg',
+  'Bébé & maternité': '/images/cat-bebe.jpg',
   'Matériel médical': '/images/cat-materiel.jpg',
 };
 

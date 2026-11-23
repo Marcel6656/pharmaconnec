@@ -53,6 +53,7 @@ export function StaticPagesView({
         registerPharmacy={registerPharmacy}
         existingAccount={existingAccountRegistration}
         onFilesChange={onRegistrationFilesChange}
+        currentLang={currentLang}
       />
     );
   }
@@ -71,11 +72,11 @@ export function StaticPagesView({
   }
 
   if (page === 'Confidentialité') {
-    return <PrivacyPage />;
+    return <PrivacyPage currentLang={currentLang} />;
   }
 
   if (page === 'Contact') {
-    return <ContactPage say={say} />;
+    return <ContactPage say={say} currentLang={currentLang} />;
   }
 
   if (page === 'Rubrique Santé' || page === 'Alertes & Urgences') {

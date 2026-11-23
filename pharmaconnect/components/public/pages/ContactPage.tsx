@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { apiSubmitContact } from '@/lib/api';
-import { SectionTitle } from '@/lib/shared';
+import { Language } from '@/lib/translations';
 import {
   ModernBrandLogoIcon,
   ModernChatEncryptedIcon,
@@ -25,9 +25,11 @@ import {
 
 interface ContactPageProps {
   say: (s: string) => void;
+  currentLang?: Language;
 }
 
-export function ContactPage({ say }: ContactPageProps) {
+export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
+  const isEn = currentLang === 'en';
   const [topic, setTopic] = useState("Demande d'information générale");
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -47,80 +49,44 @@ export function ContactPage({ say }: ContactPageProps) {
   );
 
   return (
-    <div className="cg-page-container animate-fade-in">
-      <SectionTitle
-        eyebrow="NOUS ÉCRIRE"
-        badge="Réponse sous 24–48h"
-        title="Contactez-nous"
-        desc="Une question, un partenariat officinal ou une demande d’assistance ? Notre équipe vous répond rapidement."
-        icon={<ModernMailEnvelopeIcon size={24} />}
-      />
-
-      {/* Hero harmonisé Helix / Cleargrin — Palette Pine / Menthe */}
-      <section className="hx-hero">
-        <div className="hx-hero-left">
-          <div className="hx-kicker-pill">
-            <ModernLivePulseIcon size={15} />
-            <span>ASSISTANCE &amp; PARTENARIATS · RÉPONSE SOUS 24–48H</span>
-          </div>
-
-          <h1 className="hx-hero-title">
-            Échangez Directement avec{' '}
-            <span className="hx-highlight">Notre Équipe</span>
+    <div className="pc-luxe-subpage animate-fade-in">
+      <section className="luxe-inner-hero">
+        <div
+          className="luxe-inner-hero-bg"
+          style={{ backgroundImage: "url('/images/clinic-reception.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="luxe-hero-overlay" aria-hidden="true" />
+        <div className="luxe-container luxe-inner-hero-content">
+          <span className="luxe-section-subtitle">
+            {isEn ? 'SUPPORT & PARTNERSHIPS' : 'NOUS ÉCRIRE'}
+          </span>
+          <h1 className="luxe-inner-hero-title">
+            {isEn ? 'Contact Our Team' : 'Contactez-nous'}
           </h1>
-
-          <p className="hx-hero-desc">
-            Que vous soyez patient à la recherche d’un accompagnement ou pharmacien titulaire souhaitant rejoindre le réseau, contactez-nous par message ou directement sur WhatsApp.
+          <p className="luxe-inner-hero-sub">
+            {isEn
+              ? 'Questions, pharmacy onboarding or technical assistance? Reach out by message or directly on WhatsApp.'
+              : 'Une question, un partenariat officinal ou une demande d’assistance ? Notre équipe vous répond sous 24 à 48h.'}
           </p>
-
-          <div className="hx-hero-actions">
-            <a href="#contact-form-section" className="cg-btn-pine" style={{ textDecoration: 'none' }}>
-              Écrire un message <ArrowRight size={15} />
+          <div className="luxe-hero-buttons">
+            <a href="#contact-form-section" className="luxe-btn luxe-btn-primary" style={{ textDecoration: 'none' }}>
+              {isEn ? 'Send a message' : 'Écrire un message'} <ArrowRight size={15} />
             </a>
             <a
               href={whatsappDirectUrl}
               target="_blank"
               rel="noreferrer"
-              className="cg-whatsapp-chip"
-              style={{ padding: '11px 20px', minHeight: 44, fontSize: 13.5 }}
+              className="luxe-btn luxe-btn-outline"
+              style={{ textDecoration: 'none' }}
             >
-              <ModernWhatsAppIcon size={16} /> Appel &amp; Chat WhatsApp
+              <ModernWhatsAppIcon size={16} /> WhatsApp Direct
             </a>
           </div>
         </div>
-
-        <div className="hx-hero-right">
-          <div className="hx-hero-backdrop-blob" aria-hidden="true" />
-          <img
-            src="/images/clinic-reception.jpg"
-            alt="Accueil et support PharmaConnect"
-            className="hx-hero-doctor-img"
-          />
-
-          <div className="hx-float-card hx-float-top-right">
-            <span className="hx-float-icon mint"><Clock size={18} /></span>
-            <div>
-              <b>Réponse &lt; 24h</b>
-              <small>Support officines &amp; patients</small>
-            </div>
-          </div>
-
-          <div className="hx-float-card hx-float-bottom-left">
-            <span className="hx-float-icon dark"><CheckCircle2 size={18} /></span>
-            <div>
-              <b>WhatsApp Direct</b>
-              <small>Lun – Ven · 8h00 – 18h30</small>
-            </div>
-          </div>
-
-          <div className="hx-side-visual-card" aria-hidden="true">
-            <img src="/images/pharmacy-interior.jpg" alt="" />
-            <span className="hx-side-orb">+</span>
-          </div>
-
-          <span className="hx-handwriting">À Votre<br />Écoute</span>
-        </div>
       </section>
+
+      <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
       {/* Grille 4 cartes de contact rapide (Modèle Helix) */}
       <section className="hx-section">
@@ -309,6 +275,7 @@ export function ContactPage({ say }: ContactPageProps) {
             <ModernWhatsAppIcon size={16} /> Discuter sur WhatsApp <ArrowRight size={15} />
           </a>
         </section>
+      </div>
       </div>
     </div>
   );
