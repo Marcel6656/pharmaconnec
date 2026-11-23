@@ -97,8 +97,8 @@ export function ProductsView({
 
   return (
     <div className="pc-luxe-subpage animate-fade-in">
-      {/* En-tête éditorial Luxe Studio */}
-      <section className="luxe-inner-hero">
+      {/* En-tête éditorial avec barre de recherche sur l'image */}
+      <section className="luxe-inner-hero luxe-inner-hero-has-search">
         <div
           className="luxe-inner-hero-bg"
           style={{ backgroundImage: "url('/images/hero-cinema-medicines.jpg')" }}
@@ -121,10 +121,57 @@ export function ProductsView({
             <ModernPackageBoxIcon size={15} />
             {filteredPublicProducts.length} {isEn ? 'reference(s)' : 'référence(s) en ligne'}
           </span>
+
+          <div className="luxe-hero-search-dock">
+            <div className="luxe-filter-card">
+              <div className="directory-tools pc-products-tools">
+                <div className="search-control">
+                  <ModernSearchMedicineIcon size={18} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder={isEn ? 'Medicine, brand, pharmacy...' : 'Médicament, marque, pharmacie…'}
+                  />
+                </div>
+                <select value={city} onChange={e => setCity(e.target.value)}>
+                  {['Toutes les villes', ...Array.from(new Set(validPharmacies.map(p => p.city)))].map(c => (
+                    <option key={c} value={c}>
+                      {c === 'Toutes les villes' && isEn ? 'All cities' : c}
+                    </option>
+                  ))}
+                </select>
+                <select value={availabilityFilter} onChange={e => setAvailabilityFilter(e.target.value)}>
+                  <option value="Toutes">{isEn ? 'All stock' : 'Tous les stocks'}</option>
+                  <option value="Disponible">{isEn ? 'In stock only' : 'En stock uniquement'}</option>
+                  <option value="Indisponible">{isEn ? 'Out of stock' : 'Indisponibles'}</option>
+                </select>
+                {setMinPrice && (
+                  <input
+                    type="number"
+                    min="0"
+                    className="pc-price-input"
+                    value={minPrice}
+                    onChange={e => setMinPrice(e.target.value)}
+                    placeholder={isEn ? 'Min price (FCFA)' : 'Prix min (FCFA)'}
+                  />
+                )}
+                {setMaxPrice && (
+                  <input
+                    type="number"
+                    min="0"
+                    className="pc-price-input"
+                    value={maxPrice}
+                    onChange={e => setMaxPrice(e.target.value)}
+                    placeholder={isEn ? 'Max price (FCFA)' : 'Prix max (FCFA)'}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Filtres sur fond crème #f5f1e8 */}
+      {/* Pilules de catégories */}
       <section className="luxe-filter-band">
         <div className="luxe-container">
           <div className="cg-category-pill-bar luxe-pill-bar">
@@ -145,51 +192,6 @@ export function ProductsView({
                 <CategoryGlyph name={c} /> {c}
               </button>
             ))}
-          </div>
-
-          <div className="luxe-filter-card">
-            <div className="directory-tools pc-products-tools">
-              <div className="search-control">
-                <ModernSearchMedicineIcon size={18} />
-                <input
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={isEn ? 'Medicine, brand, pharmacy...' : 'Médicament, marque, pharmacie…'}
-                />
-              </div>
-              <select value={city} onChange={e => setCity(e.target.value)}>
-                {['Toutes les villes', ...Array.from(new Set(validPharmacies.map(p => p.city)))].map(c => (
-                  <option key={c} value={c}>
-                    {c === 'Toutes les villes' && isEn ? 'All cities' : c}
-                  </option>
-                ))}
-              </select>
-              <select value={availabilityFilter} onChange={e => setAvailabilityFilter(e.target.value)}>
-                <option value="Toutes">{isEn ? 'All stock' : 'Tous les stocks'}</option>
-                <option value="Disponible">{isEn ? 'In stock only' : 'En stock uniquement'}</option>
-                <option value="Indisponible">{isEn ? 'Out of stock' : 'Indisponibles'}</option>
-              </select>
-              {setMinPrice && (
-                <input
-                  type="number"
-                  min="0"
-                  className="pc-price-input"
-                  value={minPrice}
-                  onChange={e => setMinPrice(e.target.value)}
-                  placeholder={isEn ? 'Min price (FCFA)' : 'Prix min (FCFA)'}
-                />
-              )}
-              {setMaxPrice && (
-                <input
-                  type="number"
-                  min="0"
-                  className="pc-price-input"
-                  value={maxPrice}
-                  onChange={e => setMaxPrice(e.target.value)}
-                  placeholder={isEn ? 'Max price (FCFA)' : 'Prix max (FCFA)'}
-                />
-              )}
-            </div>
           </div>
         </div>
       </section>

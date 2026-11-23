@@ -54,8 +54,8 @@ export function PharmaciesView({
 
   return (
     <div className="pc-luxe-subpage animate-fade-in">
-      {/* En-tête éditorial Luxe Studio */}
-      <section className="luxe-inner-hero">
+      {/* En-tête éditorial avec barre de recherche sur l'image */}
+      <section className="luxe-inner-hero luxe-inner-hero-has-search">
         <div
           className="luxe-inner-hero-bg"
           style={{ backgroundImage: "url('/images/pharmacy-interior.jpg')" }}
@@ -78,50 +78,47 @@ export function PharmaciesView({
             <ModernDigitalStoreIcon size={15} />
             {displayedPharmacies.length} {isEn ? 'active pharmacy(ies)' : 'officine(s) active(s)'}
           </span>
-        </div>
-      </section>
 
-      {/* Filtres sur fond crème #f5f1e8 */}
-      <section className="luxe-filter-band">
-        <div className="luxe-container">
-          <div className="luxe-filter-card">
-            <div className="directory-tools pc-pharmacies-tools">
-              <div className="search-control">
-                <ModernSearchMedicineIcon size={18} />
-                <input
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={isEn ? 'Pharmacy name, district or city...' : 'Nom de pharmacie, quartier ou ville…'}
-                />
+          <div className="luxe-hero-search-dock">
+            <div className="luxe-filter-card">
+              <div className="directory-tools pc-pharmacies-tools">
+                <div className="search-control">
+                  <ModernSearchMedicineIcon size={18} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder={isEn ? 'Pharmacy name, district or city...' : 'Nom de pharmacie, quartier ou ville…'}
+                  />
+                </div>
+                <select value={city} onChange={e => setCity(e.target.value)}>
+                  {['Toutes les villes', ...Array.from(new Set(data.pharmacies.filter(isPharmacyActiveAndValid).map(p => p.city)))].map(c => (
+                    <option key={c} value={c}>
+                      {c === 'Toutes les villes' && isEn ? 'All cities' : c}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={`outline-btn ${dutyOnly ? 'pc-filter-active' : ''}`}
+                  onClick={() => setDutyOnly(!dutyOnly)}
+                >
+                  <ModernEmergency24Icon size={15} /> {isEn ? '24/7 Duty Care' : 'Garde 24h/7j'}
+                </button>
+                <button type="button" className="outline-btn" onClick={startGeo}>
+                  <ModernRadarPinIcon size={16} /> {isEn ? 'Near Me' : 'Autour de moi'}
+                </button>
               </div>
-              <select value={city} onChange={e => setCity(e.target.value)}>
-                {['Toutes les villes', ...Array.from(new Set(data.pharmacies.filter(isPharmacyActiveAndValid).map(p => p.city)))].map(c => (
-                  <option key={c} value={c}>
-                    {c === 'Toutes les villes' && isEn ? 'All cities' : c}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className={`outline-btn ${dutyOnly ? 'pc-filter-active' : ''}`}
-                onClick={() => setDutyOnly(!dutyOnly)}
-              >
-                <ModernEmergency24Icon size={15} /> {isEn ? '24/7 Duty Care' : 'Garde 24h/7j'}
-              </button>
-              <button type="button" className="outline-btn" onClick={startGeo}>
-                <ModernRadarPinIcon size={16} /> {isEn ? 'Near Me' : 'Autour de moi'}
-              </button>
             </div>
-          </div>
 
-          {geo && (
-            <div className="geo-pill" style={{ marginTop: 14 }}>
-              <ModernRadarPinIcon size={15} />{' '}
-              {isEn
-                ? `Active location (${geo}) · Sorted by distance`
-                : `Position active (${geo}) · Pharmacies classées par proximité`}
-            </div>
-          )}
+            {geo && (
+              <div className="geo-pill" style={{ marginTop: 12 }}>
+                <ModernRadarPinIcon size={15} />{' '}
+                {isEn
+                  ? `Active location (${geo}) · Sorted by distance`
+                  : `Position active (${geo}) · Pharmacies classées par proximité`}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Language, translations } from '@/lib/translations';
-import { ModernBrandLogoIcon } from '@/components/shared/ModernIcons';
+import { ModernBrandLogoIcon, ModernWhatsAppIcon } from '@/components/shared/ModernIcons';
 
 interface FooterProps {
   go: (p: string) => void;
@@ -33,6 +33,42 @@ export function Footer({ go, currentLang = 'fr', onOpenCookieSettings }: FooterP
                 ? 'Verified pharmacies, transparent live stock and direct patient care in one refined digital platform.'
                 : 'Votre réseau de pharmacies agréées, produits vérifiés et accompagnement officinal en temps réel.'}
             </p>
+            <div className="luxe-footer-socials" aria-label={isEn ? 'Social networks' : 'Réseaux sociaux'}>
+              <a
+                href={process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://www.facebook.com/pharmaconnect'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxe-social-link"
+                aria-label="Facebook PharmaConnect"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.9.3-1.5 1.6-1.5h1.6V4.9c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1V11H7.7v3h2.6v8h3.2z" />
+                </svg>
+                <span>Facebook</span>
+              </a>
+              <a
+                href={process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/?text=Bonjour%20PharmaConnect'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxe-social-link"
+                aria-label="WhatsApp PharmaConnect"
+              >
+                <ModernWhatsAppIcon size={15} />
+                <span>WhatsApp</span>
+              </a>
+              <a
+                href={process.env.NEXT_PUBLIC_TIKTOK_URL || 'https://www.tiktok.com/@pharmaconnect'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxe-social-link"
+                aria-label="TikTok PharmaConnect"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M19.3 6.7a4.9 4.9 0 0 1-3.1-4.1V2h-3.2v13.2a2.9 2.9 0 1 1-2-2.7V9.2a6.1 6.1 0 1 0 5.2 6V8.6a8 8 0 0 0 4.6 1.5V6.9c-.5 0-1-.1-1.5-.2z" />
+                </svg>
+                <span>TikTok</span>
+              </a>
+            </div>
           </div>
 
           <div className="luxe-footer-col">
