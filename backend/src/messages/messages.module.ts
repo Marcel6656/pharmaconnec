@@ -17,7 +17,7 @@ export class SendPublicMessageDto {
   @ApiProperty() @Type(() => Number) @IsInt() pharmacyId: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() productId?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) sender?: string;
-  @ApiProperty() @IsString() @MinLength(6) @MaxLength(40) phone: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) subject?: string;
   @ApiProperty() @IsString() @MinLength(2) @MaxLength(3000) body: string;
   @ApiPropertyOptional({ description: 'Adresse e-mail de contact facultative pour une demande anonyme' })
@@ -79,6 +79,11 @@ export class MessagesService {
       if (!product) throw new NotFoundException('Produit introuvable ou non publié pour cet établissement.');
     }
 
+    const cleanPhone = (dto.phone || '').trim();
+    if (user?.role !== 'VISITOR' && cleanPhone.length < 6) {
+      throw new BadRequestException('Numéro de téléphone requis (6 caractères minimum).');
+    }
+
     const email = (user?.role === 'VISITOR' ? user.email : dto.visitorEmail)?.trim().toLowerCase() || null;
     const msg = await this.prisma.message.create({
       data: {
@@ -87,7 +92,7 @@ export class MessagesService {
         visitorId: user?.role === 'VISITOR' ? user.id : null,
         visitorEmail: email,
         sender: dto.sender?.trim() || user?.name || 'Visiteur',
-        phone: dto.phone.trim(),
+        phone: cleanPhone,
         subject: dto.subject?.trim() || 'Demande d’information',
         body: dto.body.trim(),
         direction: 'visitor',

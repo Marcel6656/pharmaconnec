@@ -16,6 +16,7 @@ interface SubscriptionPageProps {
   planPeriod: string;
   setPlanPeriod: (p: string) => void;
   changePlan: (plan: any) => void;
+  onRequestCancellation?: () => void;
 }
 
 export function SubscriptionPage({
@@ -24,7 +25,8 @@ export function SubscriptionPage({
   activePharmacy,
   planPeriod,
   setPlanPeriod,
-  changePlan
+  changePlan,
+  onRequestCancellation,
 }: SubscriptionPageProps) {
   const canSubscribe = ['Validée', 'Abonnement expiré'].includes(activePharmacy.status)
     && Boolean(activePharmacy.subscriptionEndsAt || activePharmacy.trialEndsAt);
@@ -73,6 +75,22 @@ export function SubscriptionPage({
       <div className="info-note">
         <ModernCreditCardPlanIcon size={17} /> Souscrivez par Mobile Money auprès des opérateurs disponibles.
       </div>
+      <section className="panel cg-modern-panel" style={{ marginTop: 18 }}>
+        <h3>Résiliation, non-renouvellement &amp; rétractation (14 jours)</h3>
+        <p className="muted" style={{ marginTop: 6 }}>
+          Aucun débit automatique par carte n’est effectué sans action de votre part. Pour résilier votre abonnement en cours ou exercer votre droit de rétractation de 14 jours (art. L.221-3 / L.221-18 C. conso), utilisez le bouton ci-dessous.
+        </p>
+        {onRequestCancellation && (
+          <button
+            type="button"
+            className="outline-btn"
+            style={{ marginTop: 10 }}
+            onClick={onRequestCancellation}
+          >
+            Demander la résiliation ou le remboursement
+          </button>
+        )}
+      </section>
       <div style={{ marginTop: 18 }}>
         <SanteProcheCalendarScene
           title="Gestion simplifiée des échéances et renouvellements"

@@ -7,8 +7,6 @@ import { Language } from '@/lib/translations';
 import {
   ModernSparkleCrownIcon,
   ModernVerifiedShieldIcon,
-  ModernWhatsAppIcon,
-  buildWhatsAppUrl
 } from '@/components/shared/ModernIcons';
 
 interface RegisterPharmacyPageProps {
@@ -18,6 +16,7 @@ interface RegisterPharmacyPageProps {
   existingAccount?: boolean;
   onFilesChange?: (files: File[]) => void;
   currentLang?: Language;
+  go?: (p: string) => void;
 }
 
 export function RegisterPharmacyPage({
@@ -27,12 +26,9 @@ export function RegisterPharmacyPage({
   existingAccount = false,
   onFilesChange,
   currentLang = 'fr',
+  go,
 }: RegisterPharmacyPageProps) {
   const isEn = currentLang === 'en';
-  const onboardingWhatsApp = buildWhatsAppUrl(
-    '+23566000000',
-    'Bonjour équipe PharmaConnect, je souhaite inscrire mon officine et obtenir une assistance.'
-  );
 
   return (
     <div className="pc-luxe-subpage animate-fade-in">
@@ -52,51 +48,51 @@ export function RegisterPharmacyPage({
           </h1>
           <p className="luxe-inner-hero-sub">
             {isEn
-              ? 'Create your professional account, submit pharmacy credentials and enjoy 14 days free trial after validation.'
+              ? 'Create your professional account, submit pharmacy credentials and enjoy a 14-day free trial after validation.'
               : 'Créez d’abord un compte professionnel, transmettez vos justificatifs et profitez de 14 jours d’essai gratuit après validation.'}
           </p>
           <div className="luxe-hero-buttons">
             <a href="#wizard-registration-section" className="luxe-btn luxe-btn-primary" style={{ textDecoration: 'none' }}>
               {isEn ? 'Start registration' : 'Commencer l’inscription'} <ArrowRight size={15} />
             </a>
-            <a
-              href={onboardingWhatsApp}
-              target="_blank"
-              rel="noreferrer"
-              className="luxe-btn luxe-btn-outline"
-              style={{ textDecoration: 'none' }}
-            >
-              <ModernWhatsAppIcon size={16} /> {isEn ? 'WhatsApp Support' : 'Assistance WhatsApp'}
-            </a>
+            {go && (
+              <button
+                type="button"
+                className="luxe-btn luxe-btn-outline"
+                onClick={() => go('Contact')}
+              >
+                {isEn ? 'Contact Support' : 'Contacter l’équipe'}
+              </button>
+            )}
           </div>
         </div>
       </section>
 
       <div className="cg-page-container" style={{ paddingTop: 28 }}>
 
-      {/* 4 Piliers / Statistiques d'accompagnement (Modèle Helix) */}
+      {/* 4 Piliers d'accompagnement */}
       <section className="hx-stats-bar">
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><ModernSparkleCrownIcon size={24} /></span>
           <div>
             <b>14 Jours</b>
-            <small>Essai gratuit offert</small>
+            <small>Essai gratuit sans engagement</small>
           </div>
         </div>
         <div className="hx-stat-divider" />
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><Clock size={24} /></span>
           <div>
-            <b>24h</b>
-            <small>Délai de vérification</small>
+            <b>Examen rapide</b>
+            <small>Vérification de votre dossier</small>
           </div>
         </div>
         <div className="hx-stat-divider" />
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><CheckCircle2 size={24} /></span>
           <div>
-            <b>100%</b>
-            <small>Contrôle administratif</small>
+            <b>Pièces contrôlées</b>
+            <small>Examen administratif préalable</small>
           </div>
         </div>
         <div className="hx-stat-divider" />
@@ -116,6 +112,7 @@ export function RegisterPharmacyPage({
           onSubmit={registerPharmacy}
           existingAccount={existingAccount}
           onFilesChange={onFilesChange}
+          go={go}
         />
       </div>
       </div>

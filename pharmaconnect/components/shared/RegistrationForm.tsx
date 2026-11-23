@@ -22,11 +22,13 @@ interface RegistrationFormProps {
   onSubmit: (e: React.FormEvent) => void;
   existingAccount?: boolean;
   onFilesChange?: (files: File[]) => void;
+  go?: (p: string) => void;
 }
 
-export function RegistrationForm({ form, setForm, onSubmit, existingAccount = false, onFilesChange }: RegistrationFormProps) {
+export function RegistrationForm({ form, setForm, onSubmit, existingAccount = false, onFilesChange, go }: RegistrationFormProps) {
   const [step, setStep] = useState<number>(existingAccount ? 2 : 1);
   const [stepError, setStepError] = useState<string>('');
+  const [legalAccepted, setLegalAccepted] = useState<boolean>(false);
 
   useEffect(() => {
     setStep(existingAccount ? 2 : 1);
@@ -88,6 +90,12 @@ export function RegistrationForm({ form, setForm, onSubmit, existingAccount = fa
       e.preventDefault();
       setStep(3);
       setStepError('Complétez l’étape 3 (téléphone, numéro d’autorisation, pharmacien responsable et justificatifs).');
+      return;
+    }
+    if (!legalAccepted) {
+      e.preventDefault();
+      setStep(3);
+      setStepError('Veuillez accepter les CGU, les CGV et la Politique de confidentialité avant d’envoyer votre dossier.');
       return;
     }
     setStepError('');
@@ -383,12 +391,36 @@ export function RegistrationForm({ form, setForm, onSubmit, existingAccount = fa
             <span>Les justificatifs sont conservés dans un espace privé pour l’examen du dossier par l’équipe PharmaConnect.</span>
           </div>
 
+          <label className="pc-consent-checkbox">
+            <input
+              type="checkbox"
+              required
+              checked={legalAccepted}
+              onChange={e => setLegalAccepted(e.target.checked)}
+            />
+            <span>
+              J’accepte les{' '}
+              {go ? (
+                <button type="button" className="pc-inline-text-link" onClick={() => go('Conditions générales')}>
+                  CGU &amp; CGV
+                </button>
+              ) : 'CGU & CGV'}{' '}
+              et la{' '}
+              {go ? (
+                <button type="button" className="pc-inline-text-link" onClick={() => go('Confidentialité')}>
+                  Politique de confidentialité
+                </button>
+              ) : 'Politique de confidentialité'}{' '}
+              pour le traitement de mon dossier d’agrément.
+            </span>
+          </label>
+
           <div className="cg-step-actions">
             <button type="button" className="outline-btn" onClick={() => tryGoToStep(2)}>
               <ArrowLeft size={14} /> Précédent
             </button>
-            <button type="submit" className="primary-btn cg-submit-btn" disabled={!step3Valid}>
-              Envoyer la demande d'inscription <ArrowRight size={15} />
+            <button type="submit" className="primary-btn cg-submit-btn" disabled={!step3Valid || !legalAccepted}>
+              Envoyer la demande d&apos;inscription <ArrowRight size={15} />
             </button>
           </div>
         </div>

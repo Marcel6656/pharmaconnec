@@ -21,6 +21,7 @@ import { PharmacySidebar } from '@/components/pharmacy/PharmacySidebar';
 import { PharmacyTopbar } from '@/components/pharmacy/PharmacyTopbar';
 import { PharmacyViews } from '@/components/pharmacy/PharmacyViews';
 import { AppModals } from '@/components/modals/AppModals';
+import { CookieBanner } from '@/components/shared/CookieBanner';
 import { PageTransitionStage } from '@/components/shared/MotionStage';
 import { Language } from '@/lib/translations';
 import {
@@ -53,6 +54,9 @@ const PUBLIC_PAGE_SLUGS: Record<string, string> = {
   'À propos': 'a-propos',
   'Contact': 'contact',
   'Confidentialité': 'confidentialite',
+  'Mentions légales': 'mentions-legales',
+  'Conditions générales': 'conditions-generales',
+  'Politique cookies': 'politique-cookies',
   'Inscription pharmacie': 'inscription-pharmacie',
 };
 
@@ -90,6 +94,7 @@ export default function Home() {
   const [clock, setClock] = useState(0);
   const [space, setSpace] = useState<'public' | 'pharmacy'>('public');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [cookieBannerOpen, setCookieBannerOpen] = useState(false);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState(-1);
   const [registrationFiles, setRegistrationFiles] = useState<File[]>([]);
   const [existingAccountRegistration, setExistingAccountRegistration] = useState(false);
@@ -232,6 +237,7 @@ export default function Home() {
       localStorage.removeItem('pharmaconnect-visitor-demo');
       localStorage.removeItem('pharmaconnect-visitor-accounts');
       localStorage.removeItem('pharmaconnect-data-v2');
+      localStorage.removeItem('pharmaconnect-visitor-favorites-v2');
     } catch { }
     setVisitorLoggedIn(false);
     setVisitorAccount({ name: '', email: '', password: '' });
@@ -298,6 +304,12 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setClock(Date.now());
       void refreshStateFromBackend();
@@ -348,7 +360,7 @@ export default function Home() {
       return;
     }
     try {
-      const raw = localStorage.getItem(`pharmaconnect-visitor-favorites:${visitorAccount.email.toLowerCase()}`);
+      const raw = localStorage.getItem('pharmaconnect-visitor-favorites-v2');
       const parsed = raw ? JSON.parse(raw) : [];
       setFavoritePharmacyIds(Array.isArray(parsed) ? parsed.filter((id): id is number => typeof id === 'number') : []);
     } catch {
@@ -428,7 +440,7 @@ export default function Home() {
       const exists = prev.includes(targetPharmacyId);
       const next = exists ? prev.filter(id => id !== targetPharmacyId) : [...prev, targetPharmacyId];
       try {
-        localStorage.setItem(`pharmaconnect-visitor-favorites:${visitorAccount.email.toLowerCase()}`, JSON.stringify(next));
+        localStorage.setItem('pharmaconnect-visitor-favorites-v2', JSON.stringify(next));
       } catch { }
       say(exists ? 'Pharmacie retirée de vos favoris.' : 'Pharmacie ajoutée à vos favoris.');
       return next;
@@ -642,7 +654,8 @@ export default function Home() {
 
   async function sendPublicMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!messageForm.phone.trim() || !messageForm.body.trim()) { say('Téléphone et message obligatoires.'); return; }
+    if (!messageForm.body.trim()) { say('Veuillez saisir votre message.'); return; }
+    if (!visitorLoggedIn && !messageForm.phone.trim()) { say('Téléphone et message obligatoires.'); return; }
     const targetPh = publicData.pharmacies.find(p => p.id === selectedPharmacy);
     if (!targetPh || !isPharmacyActiveAndValid(targetPh)) {
       say('Cet établissement n’accepte pas de messages actuellement.'); return;
@@ -826,6 +839,9 @@ export default function Home() {
 
   return (
     <div className="site-root">
+      <a href="#main-content" className="skip-to-content">
+        {lang === 'en' ? 'Skip to main content' : 'Aller au contenu principal'}
+      </a>
       <Header
         space={space}
         page={page}
@@ -863,7 +879,7 @@ export default function Home() {
       />
 
       {space === 'public' || !pharmacyLoggedIn ? (
-        <main className="public-main">
+        <main id="main-content" className="public-main">
           {notice && (
             <div className="toast">
               <CheckCircle2 size={17} />{notice}
@@ -959,6 +975,7 @@ export default function Home() {
                 say={say}
                 currentLang={lang}
                 onSelectPlan={changePlan}
+                go={go}
               />
             )}
 
@@ -979,9 +996,10 @@ export default function Home() {
               currentLang={lang}
               pharmaciesCount={publicPharmacies.length}
               productsCount={publicProducts.length}
+              onOpenCookieSettings={() => setCookieBannerOpen(true)}
             />
 
-            <Footer go={go} currentLang={lang} />
+            <Footer go={go} currentLang={lang} onOpenCookieSettings={() => setCookieBannerOpen(true)} />
           </PageTransitionStage>
         </main>
       ) : (
@@ -1019,7 +1037,7 @@ export default function Home() {
               setModal={setModal}
             />
 
-            <main className="workspace-content">
+            <main id="main-content" className="workspace-content">
               {notice && (
                 <div className="toast">
                   <CheckCircle2 size={17} />{notice}
@@ -1035,6 +1053,10 @@ export default function Home() {
                   activePharmacy={activePharmacy}
                   canOperatePharmacy={canOperatePharmacy(currentOwned)}
                   onLogout={handlePharmacyLogout}
+                  onRequestCancellation={() => {
+                    openSpace('public');
+                    go('Contact');
+                  }}
                   myProducts={myProducts}
                   categories={categories}
                   customCategories={customCategories}
@@ -1152,6 +1174,14 @@ export default function Home() {
         }}
         onRegistrationFilesChange={setRegistrationFiles}
         onLogoutVisitor={handleVisitorLogout}
+        onOpenCookieSettings={() => setCookieBannerOpen(true)}
+      />
+
+      <CookieBanner
+        forceOpen={cookieBannerOpen}
+        onCloseForce={() => setCookieBannerOpen(false)}
+        onOpenPolicy={() => go('Politique cookies')}
+        currentLang={lang}
       />
 
       <div className="global-footnote">

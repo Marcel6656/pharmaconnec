@@ -202,18 +202,70 @@ export function Metric({ title, value, detail, icon: Icon }: { title: string; va
 }
 
 export function Modal({ title, children, onClose, wide = false, icon }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean; icon?: React.ReactNode }) {
+  const windowRef = React.useRef<HTMLDivElement | null>(null);
+  const titleId = React.useId();
+
+  React.useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const panel = windowRef.current;
+    const focusables = panel
+      ? Array.from(panel.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      : [];
+    if (focusables[0]) {
+      focusables[0].focus();
+    } else {
+      panel?.focus();
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key === 'Tab' && panel) {
+        const items = Array.from(
+          panel.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+        ).filter(el => el.offsetParent !== null);
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [onClose]);
+
   return (
-    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={`modal-window ${wide ? 'wide' : ''}`}>
+    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div
+        ref={windowRef}
+        className={`modal-window ${wide ? 'wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="modal-header">
           <div className="cg-modal-head-left">
             {icon && <div className="cg-modal-icon-badge">{icon}</div>}
             <div>
               <div className="eyebrow">PHARMACONNECT</div>
-              <h2>{title}</h2>
+              <h2 id={titleId}>{title}</h2>
             </div>
           </div>
-          <button className="icon-action" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
+          <button type="button" className="icon-action" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
         </div>
         {children}
       </div>

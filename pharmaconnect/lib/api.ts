@@ -501,6 +501,24 @@ export async function apiLogoutAllSessions(): Promise<boolean> {
   }
 }
 
+export async function apiDeleteMe(): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const res = await fetch('/api/auth/me', {
+      method: 'DELETE',
+      headers: { ...authHeaders() },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
+      return { ok: false, error: msg || 'Impossible de supprimer le compte.' };
+    }
+    clearAuthToken();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Impossible de contacter le serveur.' };
+  }
+}
+
 export async function apiUploadPharmacyDocuments(
   pharmacyId: number,
   files: File[],

@@ -7,9 +7,10 @@ import { ModernBrandLogoIcon } from '@/components/shared/ModernIcons';
 interface FooterProps {
   go: (p: string) => void;
   currentLang?: Language;
+  onOpenCookieSettings?: () => void;
 }
 
-export function Footer({ go, currentLang = 'fr' }: FooterProps) {
+export function Footer({ go, currentLang = 'fr', onOpenCookieSettings }: FooterProps) {
   const t = translations[currentLang]?.nav || translations.fr.nav;
   const isEn = currentLang === 'en';
 
@@ -55,11 +56,15 @@ export function Footer({ go, currentLang = 'fr' }: FooterProps) {
           </div>
 
           <div className="luxe-footer-col">
-            <h5>{isEn ? 'Commitments' : 'Engagements'}</h5>
+            <h5>{isEn ? 'Legal & Compliance' : 'Informations légales'}</h5>
             <ul className="luxe-footer-links">
+              <li><button type="button" onClick={() => go('Mentions légales')}>{isEn ? 'Legal Notice' : 'Mentions légales'}</button></li>
+              <li><button type="button" onClick={() => go('Conditions générales')}>{isEn ? 'Terms & Refund Policy' : 'CGU, CGV & Rétractation'}</button></li>
               <li><button type="button" onClick={() => go('Confidentialité')}>{isEn ? 'Privacy Policy' : 'Confidentialité'}</button></li>
-              <li><button type="button" onClick={() => go('Pharmacies')}>{isEn ? '24/7 Duty Care' : 'Pharmacies de garde'}</button></li>
-              <li><button type="button" onClick={() => go('Produits')}>{isEn ? 'Live Inventory' : 'Stocks en direct'}</button></li>
+              <li><button type="button" onClick={() => go('Politique cookies')}>{isEn ? 'Cookie Policy' : 'Politique cookies'}</button></li>
+              {onOpenCookieSettings && (
+                <li><button type="button" onClick={onOpenCookieSettings}>{isEn ? 'Cookie Settings' : 'Gérer mes cookies'}</button></li>
+              )}
             </ul>
           </div>
         </div>
@@ -72,9 +77,10 @@ export function Footer({ go, currentLang = 'fr' }: FooterProps) {
             {isEn ? 'All rights reserved.' : 'Tous droits réservés.'}
           </p>
           <ul className="luxe-footer-legal">
+            <li><button type="button" onClick={() => go('Mentions légales')}>{isEn ? 'Legal' : 'Mentions légales'}</button></li>
+            <li><button type="button" onClick={() => go('Conditions générales')}>{isEn ? 'Terms' : 'CGU / CGV'}</button></li>
             <li><button type="button" onClick={() => go('Confidentialité')}>{isEn ? 'Privacy' : 'Confidentialité'}</button></li>
-            <li><button type="button" onClick={() => go('À propos')}>{t.about}</button></li>
-            <li><button type="button" onClick={() => go('Contact')}>{t.contact}</button></li>
+            <li><button type="button" onClick={() => go('Politique cookies')}>{isEn ? 'Cookies' : 'Cookies'}</button></li>
           </ul>
         </div>
       </div>

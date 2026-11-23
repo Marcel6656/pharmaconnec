@@ -30,7 +30,18 @@ export function PharmacyCard({ pharmacy, badges, onOpen, distance }: PharmacyCar
   const coverSrc = getPharmacyCoverImage(pharmacy);
 
   return (
-    <article className="pharmacy-card cg-modern-card pc-animated-card" onClick={onOpen}>
+    <article
+      className="pharmacy-card cg-modern-card pc-animated-card"
+      tabIndex={0}
+      aria-label={`Ouvrir la fiche de ${pharmacy.name}`}
+      onClick={onOpen}
+      onKeyDown={e => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="pharmacy-card-cover-wrap sp-pharmacy-cover-blended">
         <img src={coverSrc} alt={pharmacy.name} className="pharmacy-cover-img sp-mask-fade-bottom pc-zoom-media" />
         <SanteProcheWaveRibbon variant="light" className="sp-card-wave" />

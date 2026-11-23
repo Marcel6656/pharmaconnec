@@ -21,6 +21,7 @@ interface PharmacyViewsProps {
   activePharmacy?: Pharmacy;
   canOperatePharmacy?: boolean;
   onLogout?: () => void;
+  onRequestCancellation?: () => void;
   myProducts: Product[];
   categories: string[];
   customCategories: () => string[];
@@ -69,6 +70,7 @@ export function PharmacyViews({
   activePharmacy,
   canOperatePharmacy = true,
   onLogout,
+  onRequestCancellation,
   myProducts,
   categories,
   customCategories,
@@ -303,6 +305,7 @@ export function PharmacyViews({
         planPeriod={planPeriod}
         setPlanPeriod={setPlanPeriod}
         changePlan={changePlan}
+        onRequestCancellation={onRequestCancellation}
       />
     );
   }

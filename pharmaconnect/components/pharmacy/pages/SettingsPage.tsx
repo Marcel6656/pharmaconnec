@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Trash2 } from 'lucide-react';
 import { AppData, PharmacyPreferences, seed, SectionTitle, ToggleRow } from '@/lib/shared';
-import { apiChangePassword, apiLogoutAllSessions } from '@/lib/api';
+import { apiChangePassword, apiDeleteMe, apiLogoutAllSessions } from '@/lib/api';
 import { ModernLockSecurityIcon, ModernSettingsGearIcon } from '@/components/shared/ModernIcons';
 
 interface SettingsPageProps {
@@ -19,6 +19,7 @@ export function SettingsPage({ data, pharmacyId, canOperatePharmacy = true, upda
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [busyPwd, setBusyPwd] = useState(false);
+  const [busyDelete, setBusyDelete] = useState(false);
 
   return (
     <>
@@ -118,6 +119,34 @@ export function SettingsPage({ data, pharmacyId, canOperatePharmacy = true, upda
             <LogOut size={15} /> Déconnecter toutes mes sessions
           </button>
           <div className="info-note">Les préférences et paramètres de sécurité sont synchronisés avec votre compte serveur.</div>
+
+          <div className="pc-danger-zone">
+            <h4>Suppression du compte &amp; des données (RGPD)</h4>
+            <p>
+              Vous pouvez demander l’effacement immédiat de votre compte utilisateur. Vos fiches pharmacies seront suspendues et retirées de l’annuaire public.
+            </p>
+            <button
+              type="button"
+              className="danger-btn"
+              disabled={busyDelete}
+              onClick={async () => {
+                if (!window.confirm('Confirmer la suppression définitive de votre compte et de vos accès personnels ?')) {
+                  return;
+                }
+                setBusyDelete(true);
+                const res = await apiDeleteMe();
+                setBusyDelete(false);
+                if (!res.ok) {
+                  say(res.error);
+                  return;
+                }
+                say('Votre compte et vos données personnelles ont été supprimés.');
+                onLogout?.();
+              }}
+            >
+              <Trash2 size={14} /> {busyDelete ? 'Suppression…' : 'Supprimer mon compte et mes données'}
+            </button>
+          </div>
         </section>
       </div>
     </>

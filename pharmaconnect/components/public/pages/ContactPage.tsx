@@ -26,14 +26,16 @@ import {
 interface ContactPageProps {
   say: (s: string) => void;
   currentLang?: Language;
+  go?: (p: string) => void;
 }
 
-export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
+export function ContactPage({ say, currentLang = 'fr', go }: ContactPageProps) {
   const isEn = currentLang === 'en';
   const [topic, setTopic] = useState("Demande d'information générale");
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactBody, setContactBody] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false);
   const [sending, setSending] = useState(false);
 
   const focusContactForm = (selectedTopic: string) => {
@@ -42,11 +44,6 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
       document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-
-  const whatsappDirectUrl = buildWhatsAppUrl(
-    '+23566000000',
-    'Bonjour équipe PharmaConnect, je souhaite obtenir un renseignement.'
-  );
 
   return (
     <div className="pc-luxe-subpage animate-fade-in">
@@ -74,13 +71,11 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
               {isEn ? 'Send a message' : 'Écrire un message'} <ArrowRight size={15} />
             </a>
             <a
-              href={whatsappDirectUrl}
-              target="_blank"
-              rel="noreferrer"
+              href="mailto:contact@pharmaconnect.td"
               className="luxe-btn luxe-btn-outline"
               style={{ textDecoration: 'none' }}
             >
-              <ModernWhatsAppIcon size={16} /> WhatsApp Direct
+              contact@pharmaconnect.td
             </a>
           </div>
         </div>
@@ -92,18 +87,16 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
       <section className="hx-section">
         <div className="hx-specialties-grid">
           <a
-            href={whatsappDirectUrl}
-            target="_blank"
-            rel="noreferrer"
+            href="#contact-form-section"
             className="hx-spec-card tone-mint"
             style={{ textDecoration: 'none' }}
           >
             <div className="hx-spec-top">
-              <div className="hx-spec-icon-box"><ModernWhatsAppIcon size={38} /></div>
+              <div className="hx-spec-icon-box"><ModernMailEnvelopeIcon size={38} /></div>
               <span className="hx-spec-arrow"><ArrowRight size={16} /></span>
             </div>
-            <h3>Appel &amp; Chat WhatsApp</h3>
-            <p>Échange immédiat par appel vocal ou message WhatsApp avec notre ligne dédiée.</p>
+            <h3>Formulaire direct</h3>
+            <p>Échangez avec notre équipe support pour toute question patient ou demande officinale.</p>
           </a>
 
           <button
@@ -156,6 +149,10 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
             </div>
             <form onSubmit={async e => {
               e.preventDefault();
+              if (!consentChecked) {
+                say('Veuillez accepter le traitement de votre demande pour envoyer ce message.');
+                return;
+              }
               setSending(true);
               const res = await apiSubmitContact({
                 name: contactName.trim(),
@@ -171,6 +168,7 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
               setContactName('');
               setContactEmail('');
               setContactBody('');
+              setConsentChecked(false);
               say(res.message);
             }}>
               <label className="form-field">Votre nom complet *<input required value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Ex. Paul Koffi" /></label>
@@ -179,11 +177,29 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
                 <select value={topic} onChange={e => setTopic(e.target.value)}>
                   <option>Demande d&apos;information générale</option>
                   <option>Inscription ou partenariat pharmacie</option>
+                  <option>Rétractation ou résiliation d&apos;abonnement</option>
                   <option>Support technique</option>
                   <option>Autre demande</option>
                 </select>
               </label>
-              <label className="form-field">Message *<textarea required rows={5} value={contactBody} onChange={e => setContactBody(e.target.value)} placeholder="Précisez votre demande ici…" /></label>
+              <label className="form-field">Message *<textarea required rows={5} value={contactBody} onChange={e => setContactBody(e.target.value)} placeholder="Précisez votre demande sans mentionner de données médicales sensibles…" /></label>
+              <label className="pc-consent-checkbox">
+                <input
+                  type="checkbox"
+                  required
+                  checked={consentChecked}
+                  onChange={e => setConsentChecked(e.target.checked)}
+                />
+                <span>
+                  J’accepte que mes données soient utilisées pour répondre à ma demande conformément à la{' '}
+                  {go ? (
+                    <button type="button" className="pc-inline-text-link" onClick={() => go('Confidentialité')}>
+                      Politique de confidentialité
+                    </button>
+                  ) : 'Politique de confidentialité'}
+                  .
+                </span>
+              </label>
               <button className="cg-btn-pine" style={{ marginTop: 8 }} disabled={sending}><ModernSendPlaneIcon size={15} /> {sending ? 'Envoi en cours…' : 'Envoyer le message'}</button>
             </form>
           </section>
@@ -199,8 +215,8 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
             </div>
 
             <SanteProcheCalendarScene
-              title="Réponse garantie sous 24 à 48h"
-              subtitle="Planifiez une démonstration ou suivez l’activation de votre officine avec notre équipe."
+              title="Traitement rapide de vos demandes"
+              subtitle="Notre équipe étudie vos messages du lundi au vendredi (8h00 – 18h30) sous 24 à 48 heures ouvrées."
             />
 
             <section className="panel cg-modern-panel">
@@ -218,18 +234,8 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
               <div className="cg-detail-info-row">
                 <span className="cg-info-icon-pill"><ModernPhoneCallIcon size={18} /></span>
                 <div style={{ flex: 1 }}>
-                  <b>Téléphone &amp; Appel WhatsApp</b>
-                  <small>+235 66 00 00 00 · Du lundi au vendredi de 8h00 à 18h30.</small>
-                  <div style={{ marginTop: 8 }}>
-                    <a
-                      href={whatsappDirectUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="cg-whatsapp-chip"
-                    >
-                      <ModernWhatsAppIcon size={15} /> Appeler ou écrire sur WhatsApp
-                    </a>
-                  </div>
+                  <b>Horaires du support</b>
+                  <small>Du lundi au vendredi de 8h00 à 18h30 via le formulaire ou par e-mail.</small>
                 </div>
               </div>
             </section>
@@ -238,41 +244,39 @@ export function ContactPage({ say, currentLang = 'fr' }: ContactPageProps) {
               <div className="cg-detail-info-row">
                 <span className="cg-info-icon-pill"><ModernChatEncryptedIcon size={18} /></span>
                 <div>
-                  <b>E-mail direct</b>
-                  <small>contact@pharmaconnect.example</small>
-                  <small>Réponse sous 24 à 48 heures ouvrées.</small>
+                  <b>E-mail officiel &amp; DPO</b>
+                  <small>Support : contact@pharmaconnect.td · RGPD : dpo@pharmaconnect.td</small>
+                  <small>Traitement sous 24 à 48 heures ouvrées.</small>
                 </div>
               </div>
             </section>
           </div>
         </div>
 
-        {/* Bannière CTA finale Helix vert pin profond */}
+        {/* Bannière CTA finale vert / bleu */}
         <section className="hx-cta-banner">
           <div className="hx-cta-left">
             <span className="hx-cta-leaf-badge">
               <ModernBrandLogoIcon size={28} />
             </span>
             <div>
-              <strong>Assistance<br />Directe 7j/7</strong>
+              <strong>Support<br />Ouvré Lun–Ven</strong>
             </div>
           </div>
 
           <div className="hx-cta-divider" />
 
           <p className="hx-cta-center-text">
-            Besoin d’un renseignement urgent sur votre dossier pharmacie ou une fiche établissement ?<br />
-            <ModernVerifiedShieldIcon size={14} /> Échangez instantanément avec notre équipe sur WhatsApp.
+            Besoin d’un renseignement sur votre dossier pharmacie, un abonnement ou vos droits RGPD ?<br />
+            <ModernVerifiedShieldIcon size={14} /> Écrivez directement à notre équipe à contact@pharmaconnect.td.
           </p>
 
           <a
-            href={whatsappDirectUrl}
-            target="_blank"
-            rel="noreferrer"
+            href="mailto:contact@pharmaconnect.td"
             className="hx-cta-white-pill"
             style={{ textDecoration: 'none' }}
           >
-            <ModernWhatsAppIcon size={16} /> Discuter sur WhatsApp <ArrowRight size={15} />
+            <ModernMailEnvelopeIcon size={16} /> Envoyer un e-mail <ArrowRight size={15} />
           </a>
         </section>
       </div>

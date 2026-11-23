@@ -774,6 +774,8 @@ export class CoreService {
     const from = process.env.EMAIL_FROM?.trim() || 'PharmaConnect <notifications@pharmaconnect.td>';
     const resendKey = process.env.RESEND_API_KEY?.trim();
     const webhookUrl = process.env.SMTP_WEBHOOK_URL?.trim();
+    const footer = '\n\n---\nNotification transactionnelle PharmaConnect. Vous pouvez gérer ou désactiver vos alertes depuis Paramètres > Préférences de notification.';
+    const fullText = text.includes('Préférences de notification') ? text : `${text}${footer}`;
 
     if (resendKey) {
       try {
@@ -783,7 +785,7 @@ export class CoreService {
             Authorization: `Bearer ${resendKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ from, to: [to], subject, text }),
+          body: JSON.stringify({ from, to: [to], subject, text: fullText }),
           signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {
@@ -802,7 +804,7 @@ export class CoreService {
         const res = await fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to, subject, text, from }),
+          body: JSON.stringify({ to, subject, text: fullText, from }),
           signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {

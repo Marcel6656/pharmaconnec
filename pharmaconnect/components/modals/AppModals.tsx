@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AppData, Pharmacy, Product, money, Modal, Empty, isProductFresh, isStrongPassword, PASSWORD_POLICY_ERROR } from '@/lib/shared';
 import { getProductImage } from '@/lib/media';
+import { hasThirdPartyConsent } from '@/components/shared/CookieBanner';
 import { RegistrationForm } from '@/components/shared/RegistrationForm';
 import {
   ModernAlertWarningIcon,
@@ -36,6 +37,7 @@ import {
 } from '@/components/shared/ModernIcons';
 import {
   apiChangePassword,
+  apiDeleteMe,
   apiGoogleAuth,
   apiLogin,
   apiLogoutAllSessions,
@@ -144,6 +146,7 @@ interface AppModalsProps {
   onTriggerGeo?: () => void;
   onRegistrationFilesChange?: (files: File[]) => void;
   onLogoutVisitor?: () => void;
+  onOpenCookieSettings?: () => void;
 }
 
 export function AppModals({
@@ -209,11 +212,17 @@ export function AppModals({
   onTriggerGeo,
   onRegistrationFilesChange,
   onLogoutVisitor,
+  onOpenCookieSettings,
 }: AppModalsProps) {
   const [googleConfig, setGoogleConfig] = useState<GoogleAuthConfig | null>(null);
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
+  const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
+  const [messageConsent, setMessageConsent] = useState(false);
+  const [paymentLegalAccepted, setPaymentLegalAccepted] = useState(false);
+  const [visitorRegisterAccepted, setVisitorRegisterAccepted] = useState(false);
+  const [visitorDeleting, setVisitorDeleting] = useState(false);
   const [visitorAuthMode, setVisitorAuthMode] = useState<'login' | 'register'>('login');
   const [visitorForm, setVisitorForm] = useState({ name: '', email: '', password: '' });
   const [visitorAuthError, setVisitorAuthError] = useState('');
@@ -239,8 +248,27 @@ export function AppModals({
   const gsiRoleRef = useRef<'VISITOR' | 'PHARMACIST'>('VISITOR');
 
   useEffect(() => {
+    setThirdPartyConsent(hasThirdPartyConsent());
+    const onConsentChange = () => setThirdPartyConsent(hasThirdPartyConsent());
+    window.addEventListener('pc-cookie-consent-changed', onConsentChange);
+    return () => window.removeEventListener('pc-cookie-consent-changed', onConsentChange);
+  }, []);
+
+  useEffect(() => {
+    if (modal !== 'account' && modal !== 'pharmacyLogin') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setModal(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [modal, setModal]);
+
+  useEffect(() => {
+    if (modal === 'message') setMessageConsent(false);
+    if (modal === 'payment') setPaymentLegalAccepted(false);
     if (modal === 'account') {
       setVisitorAuthError('');
+      setVisitorRegisterAccepted(false);
       setVisitorForm({
         name: visitorAccount.name || '',
         email: visitorAccount.email || '',
@@ -287,10 +315,6 @@ export function AppModals({
     if (targetRole === 'PHARMACIST') {
       setPharmacyLoginForm({ email: '', password: '' });
       const resolvedOwnerId = res.user.id;
-      try {
-        localStorage.setItem('pharmaconnect-pharmacy-session', 'true');
-        localStorage.setItem('pharmaconnect-pharmacy-owner-id', String(resolvedOwnerId));
-      } catch { }
       setAccountOwnerId(resolvedOwnerId);
       setVisitorLoggedIn?.(false);
       setVisitorAccount({ name: '', email: '' });
@@ -384,7 +408,7 @@ export function AppModals({
     fetchGoogleAuthConfig().then(async cfg => {
       if (!active) return;
       setGoogleConfig(cfg);
-      if (!cfg.clientId || typeof window === 'undefined') return;
+      if (!cfg.clientId || typeof window === 'undefined' || !hasThirdPartyConsent()) return;
 
       const ready = await ensureGoogleGsiReady(6000);
       if (!active) return;
@@ -398,7 +422,7 @@ export function AppModals({
     return () => {
       active = false;
     };
-  }, [modal]);
+  }, [modal, thirdPartyConsent]);
 
   useEffect(() => {
     if ((modal !== 'account' && modal !== 'pharmacyLogin') || !googleConfig?.clientId || !gsiLoaded || typeof window === 'undefined') {
@@ -439,6 +463,12 @@ export function AppModals({
     gsiRoleRef.current = targetRole;
     setGoogleError('');
     if (targetRole === 'PHARMACIST') setPharmacyLoginError('');
+
+    if (!hasThirdPartyConsent()) {
+      const msg = 'L’authentification Google requiert l’activation des services tiers dans vos préférences cookies.';
+      setGoogleError(msg);
+      return;
+    }
 
     const cfg = googleConfig?.clientId ? googleConfig : await fetchGoogleAuthConfig();
     if (!googleConfig?.clientId) setGoogleConfig(cfg);
@@ -520,9 +550,9 @@ export function AppModals({
           onClose={() => setModal(null)}
         >
           <form onSubmit={sendPublicMessage}>
-            <div className="modal-info"><ModernChatEncryptedIcon size={17} /> Aucun compte visiteur n’est requis pour envoyer une demande. {visitorLoggedIn ? 'Cette conversation sera associée à votre compte.' : 'Connectez-vous avant l’envoi pour retrouver cette conversation dans votre espace.'}</div>
+            <div className="modal-info"><ModernChatEncryptedIcon size={17} /> Aucun compte visiteur n’est requis pour envoyer une demande. {visitorLoggedIn ? 'Cette conversation sera associée à votre compte.' : 'Connectez-vous avant l’envoi pour retrouver cette conversation dans votre espace.'} Évitez d’indiquer des données médicales sensibles inutiles dans votre message.</div>
             {targetProduct && (
-              <div className="cg-whatsapp-modal-banner" style={{ background: '#faf7f2', borderColor: 'rgba(212, 165, 116, 0.45)' }}>
+              <div className="cg-whatsapp-modal-banner" style={{ background: '#f2fbf7', borderColor: 'rgba(13, 122, 95, 0.28)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <img
                     src={getProductImage(targetProduct)}
@@ -531,7 +561,7 @@ export function AppModals({
                   />
                   <div>
                     <b>{targetProduct.name}</b>
-                    <small style={{ color: '#666666' }}>{money(targetProduct.price)} · {targetProduct.category}</small>
+                    <small style={{ color: '#45665c' }}>{money(targetProduct.price)} · {targetProduct.category}</small>
                   </div>
                 </div>
               </div>
@@ -558,9 +588,23 @@ export function AppModals({
               </div>
             )}
             <label className="form-field">Votre nom<input value={messageForm.sender} onChange={e => setMessageForm({ ...messageForm, sender: e.target.value })} placeholder="Nom ou prénom" /></label>
-            <label className="form-field">Téléphone pour réponse<input required value={messageForm.phone} onChange={e => setMessageForm({ ...messageForm, phone: e.target.value })} placeholder="Numéro de téléphone" /></label>
+            <label className="form-field">Téléphone pour réponse {visitorLoggedIn ? '(facultatif)' : '*'}<input required={!visitorLoggedIn} value={messageForm.phone} onChange={e => setMessageForm({ ...messageForm, phone: e.target.value })} placeholder="Numéro de téléphone" /></label>
             <label className="form-field">Objet<input value={messageForm.subject} onChange={e => setMessageForm({ ...messageForm, subject: e.target.value })} placeholder="Objet du message" /></label>
             <label className="form-field">Votre message<textarea required value={messageForm.body} onChange={e => setMessageForm({ ...messageForm, body: e.target.value })} placeholder="Écrivez votre demande…" /></label>
+            <label className="pc-consent-checkbox">
+              <input
+                type="checkbox"
+                required
+                checked={messageConsent}
+                onChange={e => setMessageConsent(e.target.checked)}
+              />
+              <span>
+                J’accepte que mes informations soient transmises à la pharmacie destinataire pour traiter ma demande, conformément à la{' '}
+                <button type="button" className="pc-inline-text-link" onClick={() => { setModal(null); go('Confidentialité'); }}>
+                  Politique de confidentialité
+                </button>.
+              </span>
+            </label>
             <div className="modal-actions">
               <button type="button" className="outline-btn" onClick={() => setModal(null)}>Annuler</button>
               <button className="primary-btn"><ModernSendPlaneIcon size={15} /> Envoyer</button>
@@ -576,7 +620,7 @@ export function AppModals({
           onClose={() => setModal(null)}
           wide
         >
-          <RegistrationForm form={pharmacyForm} setForm={setPharmacyForm} onSubmit={registerPharmacy} existingAccount={existingAccountRegistration} onFilesChange={onRegistrationFilesChange} />
+          <RegistrationForm form={pharmacyForm} setForm={setPharmacyForm} onSubmit={registerPharmacy} existingAccount={existingAccountRegistration} onFilesChange={onRegistrationFilesChange} go={(target) => { setModal(null); go(target); }} />
         </Modal>
       )}
 
@@ -598,11 +642,14 @@ export function AppModals({
 
             <div className="modal-info">
               <ModernPhoneCallIcon size={17} />
-              {pharmacyLoggedIn
-                ? paymentMode === 'live'
-                  ? 'Demande Mobile Money transmise à votre opérateur.'
-                  : 'Demande Mobile Money soumise au service de rapprochement pour vérification.'
-                : 'Choisissez votre moyen de paiement Mobile Money ci-dessous, puis connectez-vous à votre espace pharmacie ou inscrivez votre officine pour valider.'}
+              <span>
+                {pharmacyLoggedIn
+                  ? paymentMode === 'live'
+                    ? 'Demande Mobile Money transmise à votre opérateur.'
+                    : 'Demande Mobile Money soumise au service de rapprochement pour vérification.'
+                  : 'Choisissez votre moyen de paiement Mobile Money ci-dessous, puis connectez-vous à votre espace pharmacie ou inscrivez votre officine pour valider.'}{' '}
+                Tarif ferme affiché ci-dessus (hors éventuels frais facturés directement par l’opérateur Mobile Money) · Sans reconduction tacite sans accord.
+              </span>
             </div>
 
             <div className="form-field">
@@ -637,6 +684,24 @@ export function AppModals({
                 onChange={e => setPaymentDraft({ ...paymentDraft, phone: e.target.value })}
                 placeholder="Ex. +235 66 00 00 00" />
             </label>
+
+            {pharmacyLoggedIn && (
+              <label className="pc-consent-checkbox">
+                <input
+                  type="checkbox"
+                  required
+                  disabled={paymentBusy}
+                  checked={paymentLegalAccepted}
+                  onChange={e => setPaymentLegalAccepted(e.target.checked)}
+                />
+                <span>
+                  J’accepte les{' '}
+                  <button type="button" className="pc-inline-text-link" onClick={() => { setModal(null); go('Conditions générales'); }}>
+                    Conditions Générales de Vente et modalités de rétractation (14 jours)
+                  </button>.
+                </span>
+              </label>
+            )}
 
             <div className="modal-actions">
               <button type="button" className="outline-btn" disabled={paymentBusy} onClick={() => setModal(null)}>Annuler</button>
@@ -723,6 +788,9 @@ export function AppModals({
       {modal === 'account' && (
         <div
           className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Compte patient ou visiteur"
           onMouseDown={e => {
             if (e.target === e.currentTarget) {
               setModal(null);
@@ -735,7 +803,7 @@ export function AppModals({
               <div className="gm-auth-left">
                 <img
                   src="/images/hero-pharmacist.jpg"
-                  alt="Réseau PharmaConnect"
+                  alt=""
                   className="gm-auth-bg-img"
                 />
                 <div className="gm-auth-left-overlay" />
@@ -867,6 +935,10 @@ export function AppModals({
                       setVisitorAuthError(PASSWORD_POLICY_ERROR);
                       return;
                     }
+                    if (!visitorRegisterAccepted) {
+                      setVisitorAuthError('Veuillez confirmer avoir au moins 15 ans (ou accord parental) et accepter les CGU et la Politique de confidentialité.');
+                      return;
+                    }
 
                     setVisitorAuthLoading(true);
                     const apiRes = await apiRegisterVisitor(cleanName, emailLower, pass);
@@ -924,7 +996,18 @@ export function AppModals({
                         {googleError && (
                           <div className="gm-error-alert" style={{ marginBottom: 8 }}>
                             <ModernAlertWarningIcon size={15} />
-                            <span>{googleError}</span>
+                            <div>
+                              <span>{googleError}</span>
+                              {!thirdPartyConsent && onOpenCookieSettings && (
+                                <button
+                                  type="button"
+                                  className="gm-cookie-inline-btn"
+                                  onClick={onOpenCookieSettings}
+                                >
+                                  Gérer les préférences cookies
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -985,6 +1068,27 @@ export function AppModals({
                       placeholder={visitorAuthMode === 'register' ? 'Mot de passe (8 car. min, Maj, min, chiffre) *' : 'Mot de passe *'}
                     />
                   </div>
+
+                  {visitorAuthMode === 'register' && (
+                    <label className="pc-consent-checkbox pc-consent-on-dark">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={visitorRegisterAccepted}
+                        onChange={e => setVisitorRegisterAccepted(e.target.checked)}
+                      />
+                      <span>
+                        Je confirme avoir au moins 15 ans (ou l’autorisation de mon représentant légal) et j’accepte les{' '}
+                        <button type="button" className="pc-inline-text-link-light" onClick={() => { setModal(null); go('Conditions générales'); }}>
+                          CGU
+                        </button>{' '}
+                        et la{' '}
+                        <button type="button" className="pc-inline-text-link-light" onClick={() => { setModal(null); go('Confidentialité'); }}>
+                          Politique de confidentialité
+                        </button>.
+                      </span>
+                    </label>
+                  )}
 
                   <button type="submit" className="gm-white-submit-btn" disabled={visitorAuthLoading}>
                     {visitorAuthLoading
@@ -1553,6 +1657,40 @@ export function AppModals({
                       <LogOut size={14} /> Déconnecter tous mes appareils
                     </button>
                   </div>
+
+                  <div className="pc-danger-zone">
+                    <strong>Suppression définitive du compte (RGPD art. 17)</strong>
+                    <small>Supprime votre compte visiteur et anonymise vos données personnelles sans délai.</small>
+                    <button
+                      type="button"
+                      className="pc-danger-btn"
+                      disabled={visitorDeleting}
+                      onClick={async () => {
+                        if (!window.confirm('Confirmer la suppression définitive de votre compte et l’anonymisation de vos données personnelles ? Cette action est irréversible.')) {
+                          return;
+                        }
+                        setVisitorDeleting(true);
+                        const res = await apiDeleteMe();
+                        setVisitorDeleting(false);
+                        if (!res.ok) {
+                          setVisitorSecurityError(res.error);
+                          return;
+                        }
+                        try {
+                          localStorage.removeItem('pharmaconnect-visitor-demo');
+                          localStorage.removeItem('pharmaconnect-visitor-accounts');
+                          localStorage.removeItem('pharmaconnect-visitor-favorites-v2');
+                        } catch { }
+                        setVisitorLoggedIn?.(false);
+                        setVisitorAccount({ name: '', email: '', phone: '' });
+                        setModal(null);
+                        await refreshStateFromBackend();
+                        say('Votre compte visiteur a été supprimé.');
+                      }}
+                    >
+                      {visitorDeleting ? 'Suppression en cours…' : 'Supprimer mon compte et mes données'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1591,6 +1729,9 @@ export function AppModals({
       {modal === 'pharmacyLogin' && (
         <div
           className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Connexion à l'espace pharmacie"
           onMouseDown={e => {
             if (e.target === e.currentTarget) setModal(null);
           }}
@@ -1601,7 +1742,7 @@ export function AppModals({
               <div className="gm-auth-left">
                 <img
                   src="/images/pharmacy-interior.jpg"
-                  alt="Officine partenaire PharmaConnect"
+                  alt=""
                   className="gm-auth-bg-img"
                 />
                 <div className="gm-auth-left-overlay" />
@@ -1697,10 +1838,6 @@ export function AppModals({
                       return;
                     }
                     const resolvedOwnerId = apiRes.data.user.id;
-                    try {
-                      localStorage.setItem('pharmaconnect-pharmacy-session', 'true');
-                      localStorage.setItem('pharmaconnect-pharmacy-owner-id', String(resolvedOwnerId));
-                    } catch { }
                     setAccountOwnerId(resolvedOwnerId);
                     const refreshed = await refreshStateFromBackend(resolvedOwnerId);
                     const firstOwned = refreshed?.pharmacies.find(p => p.ownerId === resolvedOwnerId);
@@ -1729,6 +1866,24 @@ export function AppModals({
                   {googleConfig?.clientId && (
                     <>
                       <div className="gm-google-wrap">
+                        {googleError && (
+                          <div className="gm-error-alert" style={{ marginBottom: 8 }}>
+                            <ModernAlertWarningIcon size={15} />
+                            <div>
+                              <span>{googleError}</span>
+                              {!thirdPartyConsent && onOpenCookieSettings && (
+                                <button
+                                  type="button"
+                                  className="gm-cookie-inline-btn"
+                                  onClick={onOpenCookieSettings}
+                                >
+                                  Gérer les préférences cookies
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {!gsiLoaded && (
                           <button
                             type="button"

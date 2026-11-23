@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -2996,7 +2994,7 @@ a {
 }
 
 .floating-note small {
-  color: #8a9ba0;
+  color: #4a6369;
   font-size: 9px;
   margin-top: 4px
 }
@@ -4957,7 +4955,7 @@ a {
 }
 
 .form-field small {
-  color: #8a9ba0;
+  color: #4a6369;
   font-weight: 400
 }
 
@@ -7020,7 +7018,7 @@ a {
 .pharmacy-card-cover-wrap {
   position: relative;
   height: 140px;
-  background: linear-gradient(135deg, #eaf6f2 0%, #edf5f8 100%);
+  background: linear-gradient(135deg, #e0f5ec 0%, #dff1fd 100%);
   overflow: hidden;
 }
 
@@ -8691,8 +8689,9 @@ a {
   border-radius: 20px;
   overflow: hidden;
   height: 165px;
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
   border: 1px solid #dcece5;
-  box-shadow: 0 10px 26px rgba(27, 61, 54, 0.08);
+  box-shadow: 0 10px 26px rgba(13, 122, 95, 0.08);
 }
 
 .cg-contact-visual-card img {
@@ -8707,7 +8706,7 @@ a {
   inset: auto 0 0 0;
   z-index: 4 !important;
   padding: 16px 18px;
-  background: linear-gradient(180deg, rgba(8, 33, 36, 0.45) 0%, rgba(8, 33, 36, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(3, 105, 161, 0.52) 0%, rgba(13, 122, 95, 0.92) 100%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   color: #ffffff;
@@ -9465,10 +9464,10 @@ a {
   gap: 28px;
   padding: 40px 44px !important;
   border-radius: 28px !important;
-  background: linear-gradient(135deg, #0b3954 0%, #0f6266 48%, #109e81 100%) !important;
+  background: linear-gradient(135deg, #0369a1 0%, #0d7a5f 55%, #109e81 100%) !important;
   color: #ffffff;
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(11, 57, 84, 0.25);
+  box-shadow: 0 24px 60px rgba(3, 105, 161, 0.24);
 }
 
 .sp-pro-showcase-card.sp-pro-compact {
@@ -10206,8 +10205,8 @@ a {
   height: 185px;
   border-radius: 22px;
   overflow: hidden;
-  background: linear-gradient(165deg, #0b3954 0%, #0f4c45 100%);
-  box-shadow: 0 12px 30px rgba(11, 57, 84, 0.18);
+  background: linear-gradient(165deg, #0284c7 0%, #0d7a5f 100%);
+  box-shadow: 0 12px 30px rgba(3, 105, 161, 0.18);
 }
 
 .sp-contact-blended-img {
@@ -11414,7 +11413,7 @@ body {
 .gm-auth-left {
   position: relative;
   overflow: hidden;
-  background: #0d2620;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -11434,9 +11433,9 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg,
-      rgba(13, 38, 32, 0.56) 0%,
-      rgba(18, 52, 44, 0.72) 50%,
-      rgba(10, 31, 26, 0.92) 100%);
+      rgba(3, 105, 161, 0.54) 0%,
+      rgba(13, 122, 95, 0.72) 55%,
+      rgba(2, 132, 199, 0.88) 100%);
 }
 
 .gm-auth-left-inner {
@@ -11527,7 +11526,7 @@ body {
 
 .gm-auth-right {
   position: relative;
-  background: linear-gradient(135deg, #4ba88d 0%, #256f5b 52%, #1b3d36 100%);
+  background: linear-gradient(135deg, #0f8a6b 0%, #0d7a5f 52%, #0369a1 100%);
   color: #ffffff;
   padding: 28px 38px 22px;
   display: flex;
@@ -12026,7 +12025,7 @@ body {
 .mc-product-media {
   position: relative;
   height: 170px;
-  background: #f1f9f5;
+  background: linear-gradient(135deg, #e8f7f1 0%, #e6f3fc 100%);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -12944,7 +12943,7 @@ body {
 /* Helix Bottom Dark Pine CTA Banner */
 .hx-cta-banner {
   margin-top: 28px;
-  background: linear-gradient(125deg, #1b3d36 0%, #23584b 100%);
+  background: linear-gradient(125deg, #0d7a5f 0%, #0369a1 100%);
   border-radius: 22px;
   padding: 28px 36px;
   color: #ffffff;
@@ -12952,7 +12951,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  box-shadow: 0 18px 42px rgba(27, 61, 54, 0.24);
+  box-shadow: 0 18px 42px rgba(3, 105, 161, 0.22);
 }
 
 .hx-cta-left {
@@ -13212,8 +13211,8 @@ body {
 }
 
 .public-header.mega-public-header .cg-header-cta {
-  background: #0f172a;
-  border-color: #0f172a;
+  background: #0d7a5f;
+  border-color: #0d7a5f;
   color: #ffffff;
   border-radius: 999px;
   padding: 8px 13px;
@@ -13224,7 +13223,7 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 100%;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 6px 18px rgba(13, 122, 95, 0.2);
 }
 
 .public-header.mega-public-header .cg-header-cta svg {
@@ -13232,8 +13231,8 @@ body {
 }
 
 .public-header.mega-public-header .cg-header-cta:hover {
-  background: #1e293b;
-  border-color: #1e293b;
+  background: #0b5e49;
+  border-color: #0b5e49;
   transform: translateY(-1px);
 }
 
@@ -13475,7 +13474,7 @@ body {
   width: 100%;
   border: 0;
   border-radius: 999px;
-  background: #0f172a;
+  background: #0d7a5f;
   color: #ffffff;
   padding: 9px 12px;
   font: 700 12px Manrope, sans-serif;
@@ -13484,12 +13483,12 @@ body {
   justify-content: center;
   gap: 6px;
   white-space: nowrap;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 8px 20px rgba(13, 122, 95, 0.18);
   transition: transform 0.16s ease, background-color 0.16s ease;
 }
 
 .mega-featured-cta:hover {
-  background: #1e293b;
+  background: #0b5e49;
   transform: translateY(-1px);
 }
 
@@ -19592,8 +19591,8 @@ body,
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid #cce2d9;
-  background: #0d2b24;
-  box-shadow: 0 14px 30px rgba(17, 45, 38, 0.14);
+  background: linear-gradient(135deg, #0d7a5f 0%, #0284c7 100%);
+  box-shadow: 0 14px 30px rgba(3, 105, 161, 0.16);
 }
 
 .pc-banner-float-thumb {
@@ -19644,6 +19643,7 @@ body,
   height: 195px;
   border-radius: 16px;
   overflow: hidden;
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
 }
 
 .pc-visual-empty-body {
@@ -19864,18 +19864,20 @@ body,
 }
 
 /* ========================================================================
-   CLONE EXACT LUXE STUDIO (#549589) — DESIGN SYSTEM & ANIMATIONS
+   PHARMACONNECT NATURE & CONFIANCE — VERT, BLANC & TOUCHE DE BLEU
    ======================================================================== */
 :root {
-  --primary-color: #2c2c2c;
-  --secondary-color: #f5f1e8;
-  --accent-color: #d4a574;
-  --text-dark: #2c2c2c;
-  --text-light: #666666;
+  --primary-color: #163a30;
+  --secondary-color: #f2fbf7;
+  --accent-color: #0d7a5f;
+  --accent-blue: #0369a1;
+  --accent-blue-soft: #eef6fc;
+  --text-dark: #163a30;
+  --text-light: #45665c;
   --luxe-gradient-overlay: linear-gradient(
     135deg,
-    rgba(44, 44, 44, 0.84),
-    rgba(212, 165, 116, 0.28)
+    rgba(13, 122, 95, 0.84) 0%,
+    rgba(3, 105, 161, 0.78) 100%
   );
 }
 
@@ -19902,21 +19904,21 @@ body,
   padding: 0 clamp(16px, 3vw, 28px);
 }
 
-/* Harmonie Header public avec accent or champagne */
+/* Harmonie Header public Vert, Blanc & Bleu */
 .public-header {
-  border-bottom-color: rgba(44, 44, 44, 0.08);
+  border-bottom-color: rgba(13, 122, 95, 0.12);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
 }
 
 .public-nav.mega-public-nav .mega-nav-link::before,
 .public-nav.mega-public-nav .mega-nav-trigger::before {
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.16), rgba(44, 44, 44, 0.06));
+  background: linear-gradient(135deg, rgba(13, 122, 95, 0.12), rgba(3, 105, 161, 0.08));
 }
 
 .public-nav.mega-public-nav .mega-nav-link::after,
 .public-nav.mega-public-nav .mega-nav-trigger::after {
-  background: linear-gradient(90deg, #d4a574, #c9a96e);
+  background: linear-gradient(90deg, #0d7a5f, #0284c7);
 }
 
 /* 1. Hero Plein Écran */
@@ -19926,6 +19928,7 @@ body,
   display: flex;
   align-items: center;
   overflow: hidden;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
   padding: clamp(56px, 8vw, 96px) 0 84px;
 }
 
@@ -19972,7 +19975,7 @@ body,
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent-color);
+  color: #a7f3d0;
   animation: fadeInUp 0.7s ease both;
 }
 
@@ -19986,7 +19989,7 @@ body,
 }
 
 .luxe-accent-text {
-  color: var(--accent-color);
+  color: #bae6fd;
 }
 
 .luxe-hero-subtitle {
@@ -20035,7 +20038,7 @@ body,
   height: 26px;
   border: 0;
   border-radius: 50%;
-  background: #efe8da;
+  background: #dff3ec;
   color: var(--primary-color);
   display: inline-flex;
   align-items: center;
@@ -20045,10 +20048,10 @@ body,
 
 .luxe-hero-search select {
   height: 44px;
-  border: 1px solid #e4dccd;
+  border: 1px solid #cce3da;
   border-radius: 10px;
   padding: 0 12px;
-  background: #faf7f2;
+  background: #f2fbf7;
   color: var(--primary-color);
   font-size: 13.5px;
   font-weight: 500;
@@ -20086,8 +20089,9 @@ body,
 }
 
 .luxe-btn-primary:hover {
-  background: transparent;
-  color: var(--accent-color);
+  background: #0b5e49;
+  border-color: #0b5e49;
+  color: #ffffff;
   transform: translateY(-2px);
 }
 
@@ -20188,7 +20192,7 @@ body,
 }
 
 .luxe-bg-dark {
-  background: var(--primary-color);
+  background: linear-gradient(135deg, #0d6e54 0%, #0f5c7a 100%);
   color: #ffffff;
 }
 
@@ -20250,7 +20254,8 @@ body,
 .luxe-about-image {
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
+  box-shadow: 0 18px 42px rgba(13, 122, 95, 0.12);
 }
 
 .luxe-about-image img {
@@ -20331,8 +20336,9 @@ body,
   margin: 0 auto 1.35rem;
   border-radius: 50%;
   overflow: hidden;
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
   border: 2px solid var(--accent-color);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.22);
+  box-shadow: 0 8px 20px rgba(13, 122, 95, 0.16);
 }
 
 .luxe-service-icon img {
@@ -20394,7 +20400,7 @@ body,
 .luxe-filter-btn {
   padding: 8px 18px;
   border-radius: 20px;
-  border: 1px solid rgba(44, 44, 44, 0.16);
+  border: 1px solid rgba(13, 122, 95, 0.24);
   background: transparent;
   color: var(--primary-color);
   font-size: 0.82rem;
@@ -20415,14 +20421,14 @@ body,
 .luxe-subsection-divider {
   margin-top: clamp(42px, 6vw, 64px);
   padding-top: clamp(36px, 5vw, 52px);
-  border-top: 1px solid rgba(44, 44, 44, 0.1);
+  border-top: 1px solid rgba(13, 122, 95, 0.14);
 }
 
-/* Harmonisation cartes produits & pharmacies avec le style Luxe Studio */
+/* Harmonisation cartes produits & pharmacies avec le style Vert/Blanc/Bleu */
 .mc-product-card,
 .pharmacy-card.cg-modern-card {
   border-radius: 8px;
-  border-color: rgba(44, 44, 44, 0.1);
+  border-color: rgba(13, 122, 95, 0.14);
 }
 
 .mc-price-line b {
@@ -20438,8 +20444,8 @@ body,
 
 .cg-btn-pine:hover,
 .primary-btn:hover {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
+  background: #0b5e49;
+  border-color: #0b5e49;
   color: #ffffff;
 }
 
@@ -20450,12 +20456,12 @@ body,
 }
 
 .pc-page-visual-banner {
-  background: linear-gradient(135deg, #f5f1e8 0%, #ffffff 58%, #f8f4ec 100%);
-  border: 1px solid rgba(212, 165, 116, 0.35);
+  background: linear-gradient(135deg, #eefaf5 0%, #ffffff 58%, #eef6fc 100%);
+  border: 1px solid rgba(13, 122, 95, 0.24);
   border-radius: 12px;
 }
 
-/* 5. Process (Dark #2c2c2c) */
+/* 5. Process (Dégradé Vert Émeraude → Bleu Océan) */
 .luxe-process-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -20471,7 +20477,7 @@ body,
 .luxe-step-number {
   font-size: 3rem;
   font-weight: 600;
-  color: var(--accent-color);
+  color: #99f6e4;
   margin-bottom: 1.25rem;
   position: relative;
 }
@@ -20484,7 +20490,16 @@ body,
   transform: translateX(-50%);
   width: 40px;
   height: 2px;
-  background: var(--accent-color);
+  background: #7dd3fc;
+}
+
+.luxe-bg-dark .luxe-section-subtitle {
+  color: #a7f3d0;
+}
+
+.luxe-bg-dark .luxe-section-description,
+.luxe-process-step p {
+  color: #e6f7f2;
 }
 
 .luxe-process-step h4 {
@@ -20585,6 +20600,7 @@ body,
 .luxe-blog-image {
   height: 220px;
   overflow: hidden;
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
 }
 
 .luxe-blog-image img {
@@ -20648,7 +20664,7 @@ body,
   background: var(--secondary-color);
   border-radius: 8px;
   padding: 2rem;
-  border: 1px solid rgba(212, 165, 116, 0.35);
+  border: 1px solid rgba(3, 105, 161, 0.22);
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
@@ -20667,12 +20683,12 @@ body,
   color: var(--text-light);
 }
 
-/* 9. Footer Sombre Luxe Studio */
+/* 9. Footer Vert Émeraude → Bleu Océan */
 .public-footer.luxe-footer {
-  background: linear-gradient(180deg, #0f0f0f, #080808);
-  color: #bdbdbd;
+  background: linear-gradient(180deg, #0d5c47 0%, #0b4a5e 100%);
+  color: #e0f5ed;
   padding: 64px 0 28px;
-  border-top: 1px solid rgba(201, 169, 110, 0.2);
+  border-top: 1px solid rgba(125, 211, 252, 0.24);
 }
 
 .luxe-footer-inner {
@@ -20701,9 +20717,9 @@ body,
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: rgba(201, 169, 110, 0.14);
-  color: #c9a96e;
-  border: 1px solid rgba(201, 169, 110, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(186, 230, 253, 0.42);
 }
 
 .luxe-brand-text {
@@ -20712,14 +20728,14 @@ body,
   font-weight: 700;
   letter-spacing: 3px;
   line-height: 1;
-  color: #c9a96e;
+  color: #ffffff;
 }
 
 .luxe-brand-subtitle {
   display: block;
   font-size: 11.5px;
   letter-spacing: 4px;
-  color: #c9a96e;
+  color: #bae6fd;
   margin-top: 3px;
 }
 
@@ -20728,7 +20744,7 @@ body,
   max-width: 340px;
   font-size: 0.92rem;
   line-height: 1.65;
-  color: #a6a6a6;
+  color: #d6efe7;
 }
 
 .luxe-footer-col h5 {
@@ -20752,7 +20768,7 @@ body,
   background: transparent;
   border: 0;
   padding: 0;
-  color: #b5b5b5;
+  color: #d6efe7;
   font-size: 0.92rem;
   cursor: pointer;
   text-align: left;
@@ -20760,13 +20776,13 @@ body,
 }
 
 .luxe-footer-links button:hover {
-  color: var(--accent-color);
+  color: #bae6fd;
   transform: translateX(3px);
 }
 
 .luxe-footer-divider {
   border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
   margin: 36px 0 20px;
 }
 
@@ -20781,7 +20797,7 @@ body,
 .luxe-footer-copyright {
   margin: 0;
   font-size: 0.86rem;
-  color: #8f8f8f;
+  color: #d6efe7;
 }
 
 .luxe-footer-legal {
@@ -20797,14 +20813,14 @@ body,
   background: transparent;
   border: 0;
   padding: 0;
-  color: #a6a6a6;
+  color: #d6efe7;
   font-size: 0.86rem;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
 .luxe-footer-legal button:hover {
-  color: var(--accent-color);
+  color: #bae6fd;
 }
 
 /* Responsive Luxe Studio */
@@ -20880,6 +20896,7 @@ body,
   display: flex;
   align-items: center;
   overflow: hidden;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
   padding: clamp(42px, 6vw, 70px) 0;
 }
 
@@ -20922,9 +20939,9 @@ body,
   gap: 8px;
   padding: 7px 15px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(212, 165, 116, 0.55);
+  border: 1px solid rgba(186, 230, 253, 0.55);
   color: #ffffff;
   font-size: 0.85rem;
   font-weight: 600;
@@ -20933,7 +20950,7 @@ body,
 .luxe-filter-band {
   background: var(--secondary-color);
   padding: 24px 0;
-  border-bottom: 1px solid rgba(44, 44, 44, 0.08);
+  border-bottom: 1px solid rgba(13, 122, 95, 0.12);
 }
 
 .luxe-pill-bar {
@@ -20944,8 +20961,8 @@ body,
   background: #ffffff;
   padding: 14px 16px;
   border-radius: 8px;
-  border: 1px solid rgba(44, 44, 44, 0.08);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(13, 122, 95, 0.14);
+  box-shadow: 0 10px 26px rgba(13, 94, 72, 0.05);
 }
 
 .luxe-filter-card .outline-btn.pc-filter-active {
@@ -20960,8 +20977,8 @@ body,
 }
 
 .luxe-product-card .mc-product-cat {
-  color: #9e7242;
-  background: #f5f1e8;
+  color: var(--accent-blue);
+  background: var(--accent-blue-soft);
 }
 
 .luxe-product-card .mc-outline-pill-btn:hover,
@@ -20972,48 +20989,48 @@ body,
 }
 
 /* ========================================================================
-   RESPONSIVE & HARMONISATION FINALE LUXE STUDIO
+   RESPONSIVE & HARMONISATION FINALE VERT / BLANC / BLEU
    ======================================================================== */
 
-/* Fil d'Ariane clair dans les bannières hero sombres */
+/* Fil d'Ariane clair dans les bannières hero vert/bleu */
 .pc-nested-breadcrumb.luxe-hero-breadcrumb {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.84);
   margin-bottom: 12px;
 }
 
 .pc-nested-breadcrumb.luxe-hero-breadcrumb button {
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.pc-nested-breadcrumb.luxe-hero-breadcrumb button:hover {
-  color: var(--accent-color);
-}
-
-.pc-nested-breadcrumb.luxe-hero-breadcrumb > span {
-  color: var(--accent-color);
-}
-
-/* Harmonisation CTA header, boutons & onglets méga-menu avec Luxe Studio */
-.public-header.mega-public-header .cg-header-cta {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
   color: #ffffff;
 }
 
-.public-header.mega-public-header .cg-header-cta:hover {
+.pc-nested-breadcrumb.luxe-hero-breadcrumb button:hover {
+  color: #bae6fd;
+}
+
+.pc-nested-breadcrumb.luxe-hero-breadcrumb > span {
+  color: #a7f3d0;
+}
+
+/* Harmonisation CTA header, boutons & onglets méga-menu */
+.public-header.mega-public-header .cg-header-cta {
   background: var(--accent-color);
   border-color: var(--accent-color);
   color: #ffffff;
 }
 
+.public-header.mega-public-header .cg-header-cta:hover {
+  background: #0b5e49;
+  border-color: #0b5e49;
+  color: #ffffff;
+}
+
 .mega-side-tab.is-active {
-  background: linear-gradient(135deg, #f5f1e8 0%, rgba(212, 165, 116, 0.24) 100%);
+  background: linear-gradient(135deg, #eefaf5 0%, #eef6fc 100%);
   color: var(--primary-color);
   box-shadow: inset 3px 0 0 var(--accent-color);
 }
 
 .mobile-public-menu.is-open {
-  background: rgba(212, 165, 116, 0.2);
+  background: rgba(13, 122, 95, 0.14);
   color: var(--primary-color);
 }
 
@@ -21039,14 +21056,14 @@ body,
   gap: 6px;
 }
 
-/* Alignement visuel du bandeau de mention légale sous le footer Luxe */
+/* Alignement visuel du bandeau de mention légale sous le footer */
 .global-footnote {
   padding: 12px 16px;
   font-size: 12px;
   text-align: center;
-  background: #080808;
-  color: #9a9a9a;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #094052;
+  color: #e0f2fe;
+  border-top: 1px solid rgba(186, 230, 253, 0.2);
 }
 
 /* Correction cascade tablettes */
@@ -21271,7 +21288,7 @@ body,
   gap: 10px;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1.5px solid rgba(44, 44, 44, 0.14);
+  border: 1.5px solid rgba(13, 122, 95, 0.2);
   background: #ffffff;
   text-align: left;
   cursor: pointer;
@@ -21280,26 +21297,26 @@ body,
 
 .pc-payment-method-card:hover {
   border-color: var(--accent-color);
-  background: #faf7f2;
+  background: #f2fbf7;
 }
 
 .pc-payment-method-card.is-selected {
-  border-color: var(--accent-color);
-  background: var(--secondary-color);
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.2);
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-soft);
+  box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.16);
 }
 
 .pc-payment-method-dot {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid rgba(44, 44, 44, 0.3);
+  border: 2px solid rgba(13, 122, 95, 0.38);
   flex-shrink: 0;
   position: relative;
 }
 
 .pc-payment-method-card.is-selected .pc-payment-method-dot {
-  border-color: var(--accent-color);
+  border-color: var(--accent-blue);
 }
 
 .pc-payment-method-card.is-selected .pc-payment-method-dot::after {
@@ -21307,7 +21324,7 @@ body,
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background: var(--accent-color);
+  background: var(--accent-blue);
 }
 
 .pc-payment-method-card b {
@@ -21325,5 +21342,307 @@ body,
 @media (max-width: 440px) {
   .pc-payment-methods-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Accessibilité clavier : lien d'évitement & focus visible */
+.skip-to-content {
+  position: fixed;
+  top: -120px;
+  left: 16px;
+  z-index: 9999;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #0d7a5f;
+  color: #ffffff;
+  font: 700 13px Manrope, sans-serif;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(13, 122, 95, 0.35);
+  transition: top 0.16s ease;
+}
+
+.skip-to-content:focus {
+  top: 14px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #0369a1 !important;
+  outline-offset: 2px;
+}
+
+/* Consentements formulaires & liens légaux inline */
+.pc-consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbe3da;
+  background: #f2fbf7;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #163a30;
+  cursor: pointer;
+}
+
+.pc-consent-checkbox input[type='checkbox'] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #0d7a5f;
+  cursor: pointer;
+}
+
+.pc-consent-checkbox.pc-consent-on-dark {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+
+.pc-inline-text-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #0369a1;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.pc-inline-text-link-light {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #bae6fd;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.gm-cookie-inline-btn {
+  display: inline-block;
+  margin-top: 6px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Bandeau cookies CNIL (Accepter / Refuser strictement équivalents) */
+.pc-cookie-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 950;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.pc-cookie-card {
+  background: #ffffff;
+  color: #163a30;
+  border: 1px solid #b6ddd0;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 22px 48px rgba(13, 94, 72, 0.22);
+}
+
+.pc-cookie-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pc-cookie-title {
+  margin: 0;
+  font: 700 15.5px Manrope, sans-serif;
+  color: #163a30;
+}
+
+.pc-cookie-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #45665c;
+}
+
+.pc-cookie-custom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pc-cookie-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d5ebe3;
+  background: #f6fcf9;
+}
+
+.pc-cookie-option b {
+  display: block;
+  font-size: 13px;
+  color: #163a30;
+}
+
+.pc-cookie-option small {
+  display: block;
+  font-size: 12px;
+  color: #45665c;
+}
+
+.pc-cookie-always-on {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0d7a5f;
+  white-space: nowrap;
+}
+
+.pc-cookie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.pc-cookie-btn {
+  min-height: 40px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font: 700 13px Manrope, sans-serif;
+  cursor: pointer;
+  border: 1.5px solid #0d7a5f;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.pc-cookie-btn-equal {
+  background: #0d7a5f;
+  color: #ffffff;
+}
+
+.pc-cookie-btn-equal:hover {
+  background: #0b5e49;
+  border-color: #0b5e49;
+}
+
+.pc-cookie-btn-secondary {
+  background: #eef6fc;
+  border-color: #0369a1;
+  color: #0369a1;
+}
+
+.pc-cookie-btn-secondary:hover {
+  background: #dceefa;
+}
+
+/* Tables légales, prix barrés, engagements & suppression compte RGPD */
+.pc-legal-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.pc-legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pc-legal-table th,
+.pc-legal-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid #d5ebe3;
+}
+
+.pc-legal-table th {
+  background: #eefaf5;
+  color: #163a30;
+  font-weight: 700;
+}
+
+.pc-legal-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pc-price-ref {
+  display: block;
+  font-size: 13px;
+  color: #45665c;
+  text-decoration: line-through;
+  margin-bottom: 2px;
+}
+
+.pc-commitment-card {
+  border-top: 3px solid #0d7a5f;
+}
+
+.pc-danger-zone {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #f5c2c7;
+  background: #fff5f5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pc-danger-zone strong {
+  color: #842029;
+  font-size: 13.5px;
+}
+
+.pc-danger-zone small {
+  color: #58151c;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.pc-danger-btn {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #b02a37;
+  background: #b02a37;
+  color: #ffffff;
+  font: 700 12.5px Manrope, sans-serif;
+  cursor: pointer;
+}
+
+.pc-danger-btn:hover:not(:disabled) {
+  background: #842029;
+  border-color: #842029;
+}
+
+@media (max-width: 640px) {
+  .pc-cookie-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

@@ -184,7 +184,10 @@ export function HomeView({
         <div className="luxe-container">
           <div className="luxe-about-grid">
             <div className="luxe-about-image">
-              <img src="/images/hero-pharmacist.jpg" alt="Pharmacien partenaire PharmaConnect" />
+              <img
+                src="/images/hero-pharmacist.jpg"
+                alt={isEn ? 'PharmaConnect partner pharmacist' : 'Pharmacien partenaire PharmaConnect'}
+              />
             </div>
             <div className="luxe-about-copy">
               <div className="luxe-section-header luxe-align-left">
@@ -199,26 +202,26 @@ export function HomeView({
               </div>
               <p className="luxe-lead">
                 {isEn
-                  ? 'PharmaConnect connects patients with accredited pharmacies and real-time verified medication inventories.'
-                  : 'PharmaConnect relie chaque patient aux officines agréées grâce à un suivi transparent des disponibilités et des prix indicatifs.'}
+                  ? 'PharmaConnect connects patients with accredited pharmacies and indicative availability declared by each dispensary.'
+                  : 'PharmaConnect relie chaque patient aux officines agréées grâce à un suivi transparent des disponibilités déclarées et des prix indicatifs.'}
               </p>
               <p className="luxe-body-copy">
                 {isEn
-                  ? 'Every listed pharmacy is verified administratively before publishing its catalog, duty hours and direct WhatsApp or phone lines.'
+                  ? 'Every listed pharmacy is verified administratively before publishing its catalog, opening hours and direct phone or WhatsApp lines.'
                   : 'Chaque établissement est vérifié avant publication : vous consultez les stocks déclarés, repérez les pharmacies de garde et échangez directement avec le pharmacien.'}
               </p>
               <div className="luxe-stats-row">
                 <div className="luxe-stat-item">
-                  <h3>{verifiedPharmacies.length}+</h3>
+                  <h3>{verifiedPharmacies.length}</h3>
                   <p>{isEn ? 'Verified Pharmacies' : 'Pharmacies vérifiées'}</p>
                 </div>
                 <div className="luxe-stat-item">
-                  <h3>{publicProducts.length}+</h3>
-                  <p>{isEn ? 'Live Products' : 'Produits publiés'}</p>
+                  <h3>{publicProducts.length}</h3>
+                  <p>{isEn ? 'Published Products' : 'Produits publiés'}</p>
                 </div>
                 <div className="luxe-stat-item">
-                  <h3>24/7</h3>
-                  <p>{isEn ? 'Duty Coverage' : 'Garde & urgence'}</p>
+                  <h3>{isEn ? 'On-Duty' : 'Gardes'}</h3>
+                  <p>{isEn ? 'Opening & Duty Hours' : 'Horaires & permanences'}</p>
                 </div>
               </div>
             </div>
@@ -486,63 +489,50 @@ export function HomeView({
         </div>
       </section>
 
-      {/* 6. TÉMOIGNAGES */}
-      <section id="testimonials" className="luxe-section">
+      {/* 6. NOS ENGAGEMENTS VÉRIFIABLES */}
+      <section id="commitments" className="luxe-section">
         <div className="luxe-container">
           <div className="luxe-section-header luxe-text-center">
-            <span className="luxe-section-subtitle">{isEn ? 'TESTIMONIALS' : 'TÉMOIGNAGES'}</span>
-            <h2 className="luxe-section-title">{isEn ? 'Patients & Pharmacists' : 'Avis Patients & Officines'}</h2>
+            <span className="luxe-section-subtitle">{isEn ? 'OUR COMMITMENTS' : 'NOS ENGAGEMENTS'}</span>
+            <h2 className="luxe-section-title">{isEn ? 'Verifiable Standards' : 'Des Engagements Vérifiables'}</h2>
+            <p className="luxe-section-description">
+              {isEn
+                ? 'PharmaConnect acts solely as a transparent health directory — no online medicine sales and no unverified reviews.'
+                : 'PharmaConnect agit comme annuaire transparent : aucune vente de médicament en ligne, uniquement des données déclarées et contrôlées.'}
+            </p>
           </div>
 
           <div className="luxe-testimonials-grid">
-            <article className="luxe-testimonial-card">
+            <article className="luxe-testimonial-card pc-commitment-card">
               <div className="luxe-testimonial-content">
+                <h3>{isEn ? '1. Administrative Verification' : '1. Contrôle d’agrément avant publication'}</h3>
                 <p>
                   {isEn
-                    ? '"Finding an on-duty pharmacy with the exact pediatric treatment took less than two minutes. Truly reassuring."'
-                    : '« Trouver une pharmacie de garde disposant du traitement pédiatrique m’a pris moins de deux minutes. Un vrai soulagement. »'}
+                    ? 'Every partner pharmacy submits its official authorization and supporting documents for administrative review before appearing publicly.'
+                    : 'Chaque officine dépose son autorisation d’ouverture et ses justificatifs pour examen administratif avant toute visibilité dans l’annuaire.'}
                 </p>
-              </div>
-              <div className="luxe-testimonial-author">
-                <img src="/images/hero-patient-smile.jpg" alt="Claire M." />
-                <div>
-                  <h5>Claire M.</h5>
-                  <span>{isEn ? 'Patient' : 'Patiente'}</span>
-                </div>
               </div>
             </article>
 
-            <article className="luxe-testimonial-card">
+            <article className="luxe-testimonial-card pc-commitment-card">
               <div className="luxe-testimonial-content">
+                <h3>{isEn ? '2. Direct Pharmacy Guidance' : '2. Pas de panier, délivrance au comptoir'}</h3>
                 <p>
                   {isEn
-                    ? '"Our pharmacy receives qualified local inquiries every day while keeping full control over our stock updates."'
-                    : '« Notre officine reçoit des demandes locales qualifiées chaque jour tout en gardant la maîtrise complète de nos stocks. »'}
+                    ? 'Indicative stocks and prices are declared by each pharmacy so you can call or message the pharmacist prior to traveling — dispensing remains strictly in-person.'
+                    : 'Les prix et stocks indicatifs sont déclarés par les officines pour vous orienter avant déplacement ; la délivrance reste encadrée en pharmacie.'}
                 </p>
-              </div>
-              <div className="luxe-testimonial-author">
-                <img src="/images/cta-pharmacist.jpg" alt="Dr. Jean-Luc K." />
-                <div>
-                  <h5>Dr. Jean-Luc K.</h5>
-                  <span>{isEn ? 'Pharmacist Owner' : 'Pharmacien titulaire'}</span>
-                </div>
               </div>
             </article>
 
-            <article className="luxe-testimonial-card">
+            <article className="luxe-testimonial-card pc-commitment-card">
               <div className="luxe-testimonial-content">
+                <h3>{isEn ? '3. Data Protection & Control' : '3. Protection & maîtrise de vos données'}</h3>
                 <p>
                   {isEn
-                    ? '"Clear prices, verified pharmacies, and direct WhatsApp contact without useless back-and-forth across the city."'
-                    : '« Des prix clairs, des pharmacies certifiées et un contact direct sans déplacements inutiles à travers la ville. »'}
+                    ? 'Browse freely without creating an account, block optional third-party scripts anytime, and delete your account and personal data directly.'
+                    : 'Consultation libre sans compte, blocage des scripts tiers par défaut, échanges protégés en transit (HTTPS/TLS) et suppression autonome de votre compte.'}
                 </p>
-              </div>
-              <div className="luxe-testimonial-author">
-                <img src="/images/hero-smile.jpg" alt="Amina D." />
-                <div>
-                  <h5>Amina D.</h5>
-                  <span>{isEn ? 'Family Caregiver' : 'Aidante familiale'}</span>
-                </div>
               </div>
             </article>
           </div>
@@ -565,7 +555,7 @@ export function HomeView({
           <div className="luxe-blog-grid">
             <article className="luxe-blog-card">
               <div className="luxe-blog-image">
-                <img src="/images/hero-cinema-medicines.jpg" alt="Bon usage des médicaments" />
+                <img src="/images/hero-cinema-medicines.jpg" alt={isEn ? 'Safe medication usage' : 'Bon usage des médicaments'} />
               </div>
               <div className="luxe-blog-content">
                 <div className="luxe-blog-meta">
@@ -590,7 +580,7 @@ export function HomeView({
 
             <article className="luxe-blog-card">
               <div className="luxe-blog-image">
-                <img src="/images/hero-cinema-vitamins.jpg" alt="Vitamines et immunité" />
+                <img src="/images/hero-cinema-vitamins.jpg" alt={isEn ? 'Vitamins and immunity' : 'Vitamines et immunité'} />
               </div>
               <div className="luxe-blog-content">
                 <div className="luxe-blog-meta">
@@ -615,7 +605,7 @@ export function HomeView({
 
             <article className="luxe-blog-card">
               <div className="luxe-blog-image">
-                <img src="/images/hero-cinema-care.jpg" alt="Pharmacies de garde et urgences" />
+                <img src="/images/hero-cinema-care.jpg" alt={isEn ? 'Duty pharmacies and emergency care' : 'Pharmacies de garde et urgences'} />
               </div>
               <div className="luxe-blog-content">
                 <div className="luxe-blog-meta">

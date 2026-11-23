@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Injectable, Module, Patch, Post, BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Injectable, Module, Patch, Post, BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -289,6 +289,33 @@ export class AuthService {
     await this.core.audit(authUser, 'Déconnexion de toutes les sessions', 'Utilisateur', authUser.id);
     return { ok: true };
   }
+
+  async deleteMe(authUser: AuthUser) {
+    if (authUser.role === 'ADMIN') {
+      throw new ForbiddenException('Un compte administrateur ne peut pas être supprimé depuis cet espace.');
+    }
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: authUser.id } });
+    const emailLower = user.email.trim().toLowerCase();
+
+    await this.prisma.$transaction(async tx => {
+      await tx.message.updateMany({
+        where: { OR: [{ visitorId: user.id }, { visitorEmail: emailLower }] },
+        data: { visitorId: null, visitorEmail: null, sender: 'Compte supprimé', phone: '' },
+      });
+
+      if (user.role === 'PHARMACIST') {
+        await tx.pharmacy.updateMany({
+          where: { ownerId: user.id },
+          data: { ownerId: null, status: 'Suspendue' },
+        });
+      }
+
+      await tx.user.delete({ where: { id: user.id } });
+    });
+
+    await this.core.audit(undefined, `Compte supprimé par l'utilisateur (RGPD art. 17) : ${user.role}`, 'Utilisateur', user.id);
+    return { ok: true };
+  }
 }
 
 // ---------- Controller ----------
@@ -341,6 +368,12 @@ export class AuthController {
   @Post('logout-all')
   logoutAll(@CurrentUser() user: AuthUser) {
     return this.auth.logoutAll(user);
+  }
+
+  @ApiBearerAuth() @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Delete('me')
+  deleteMe(@CurrentUser() user: AuthUser) {
+    return this.auth.deleteMe(user);
   }
 }
 

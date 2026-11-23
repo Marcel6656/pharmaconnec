@@ -7,6 +7,7 @@ import { ContactPage } from '@/components/public/pages/ContactPage';
 import { PrivacyPage } from '@/components/public/pages/PrivacyPage';
 import { RegisterPharmacyPage } from '@/components/public/pages/RegisterPharmacyPage';
 import { HealthAlertsPage, HealthSubPage } from '@/components/public/pages/HealthAlertsPage';
+import { CookiesPage, LegalNoticePage, TermsPage } from '@/components/public/pages/LegalPages';
 
 interface StaticPagesProps {
   page: string;
@@ -25,6 +26,7 @@ interface StaticPagesProps {
   currentLang?: Language;
   pharmaciesCount?: number;
   productsCount?: number;
+  onOpenCookieSettings?: () => void;
 }
 
 export function StaticPagesView({
@@ -44,6 +46,7 @@ export function StaticPagesView({
   currentLang = 'fr',
   pharmaciesCount,
   productsCount,
+  onOpenCookieSettings,
 }: StaticPagesProps) {
   if (page === 'Inscription pharmacie') {
     return (
@@ -72,11 +75,23 @@ export function StaticPagesView({
   }
 
   if (page === 'Confidentialité') {
-    return <PrivacyPage currentLang={currentLang} />;
+    return <PrivacyPage currentLang={currentLang} go={go} />;
+  }
+
+  if (page === 'Mentions légales') {
+    return <LegalNoticePage go={go} currentLang={currentLang} />;
+  }
+
+  if (page === 'Conditions générales') {
+    return <TermsPage go={go} currentLang={currentLang} />;
+  }
+
+  if (page === 'Politique cookies') {
+    return <CookiesPage go={go} currentLang={currentLang} onOpenCookieSettings={onOpenCookieSettings} />;
   }
 
   if (page === 'Contact') {
-    return <ContactPage say={say} currentLang={currentLang} />;
+    return <ContactPage say={say} currentLang={currentLang} go={go} />;
   }
 
   if (page === 'Rubrique Santé' || page === 'Alertes & Urgences') {

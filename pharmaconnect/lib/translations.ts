@@ -85,17 +85,17 @@ export const translations = {
       desc: 'Nous combinons la transparence numérique avec une écoute chaleureuse pour rendre chaque recherche de soin simple, rapide et rassurante.',
       learnMore: 'En savoir plus',
       badge: 'Réseau d’Officines Agréées',
-      quote: '« Trouver mon traitement en urgence un dimanche soir n’a jamais été aussi simple. Le service est rapide, fiable et très rassurant ! »',
-      author: '— Jessica R.',
-      role: 'Patiente suivie'
+      quote: '« Vérifiez la disponibilité déclarée par les officines et contactez directement le comptoir avant tout déplacement. »',
+      author: '— Charte PharmaConnect',
+      role: 'Transparence & Proximité'
     },
     metrics: {
-      patients: '100%',
-      patientsLabel: 'Officines vérifiées',
-      rating: '24h/7j',
-      ratingLabel: 'Repérage de garde',
-      experience: 'Temps réel',
-      experienceLabel: 'Prix & stocks actualisés',
+      patients: 'Vérifiées',
+      patientsLabel: 'Pièces d’agrément contrôlées',
+      rating: 'Gardes',
+      ratingLabel: 'Repérage des officines de garde',
+      experience: 'Actualisés',
+      experienceLabel: 'Prix & stocks déclarés',
       futures: 'Sans commande',
       futuresLabel: 'Contact direct officine'
     },
@@ -204,12 +204,12 @@ export const translations = {
       role: 'PharmaConnect User'
     },
     metrics: {
-      patients: '100%',
-      patientsLabel: 'Verified Pharmacies',
-      rating: '24/7',
-      ratingLabel: 'On-Duty Finder',
-      experience: 'Live',
-      experienceLabel: 'Fresh Stock Updates',
+      patients: 'Verified',
+      patientsLabel: 'Accredited pharmacies',
+      rating: 'On-Duty',
+      ratingLabel: 'Duty pharmacy finder',
+      experience: 'Updated',
+      experienceLabel: 'Declared stock updates',
       futures: 'Direct',
       futuresLabel: 'Pharmacy Contact'
     },

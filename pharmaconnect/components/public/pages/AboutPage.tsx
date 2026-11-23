@@ -225,22 +225,22 @@ export function AboutPage({
       </section>
 
       {/* ============================================================ */}
-      {/* 4. BARRE 4 STATISTIQUES SUR FOND VERT MENTHE DOUX (HELIX)    */}
+      {/* 4. BARRE 4 INDICATEURS SUR FOND VERT MENTHE DOUX             */}
       {/* ============================================================ */}
       <section className="hx-stats-bar">
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><ModernDigitalStoreIcon size={24} /></span>
           <div>
-            <b>{pharmaciesCount !== undefined ? pharmaciesCount : '100%'}</b>
-            <small>{pharmaciesCount !== undefined ? 'Officines actives' : 'Officines vérifiées'}</small>
+            <b>{pharmaciesCount !== undefined ? pharmaciesCount : 'Vérifiées'}</b>
+            <small>{pharmaciesCount !== undefined ? 'Officines actives' : 'Officines contrôlées'}</small>
           </div>
         </div>
         <div className="hx-stat-divider" />
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><Users size={24} /></span>
           <div>
-            <b>{productsCount !== undefined ? productsCount : 'Temps réel'}</b>
-            <small>{productsCount !== undefined ? 'Références en ligne' : 'Stocks actualisés'}</small>
+            <b>{productsCount !== undefined ? productsCount : 'Actualisés'}</b>
+            <small>{productsCount !== undefined ? 'Références en ligne' : 'Stocks déclarés'}</small>
           </div>
         </div>
         <div className="hx-stat-divider" />
@@ -255,8 +255,8 @@ export function AboutPage({
         <div className="hx-stat-cell">
           <span className="hx-stat-ico"><Clock size={24} /></span>
           <div>
-            <b>24h/7j</b>
-            <small>Pharmacies de Garde</small>
+            <b>Gardes</b>
+            <small>Repérage officines de garde</small>
           </div>
         </div>
       </section>

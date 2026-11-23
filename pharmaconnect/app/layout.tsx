@@ -1,6 +1,27 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
+import { Inter, Manrope, Playfair_Display } from 'next/font/google';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-playfair',
+  display: 'swap',
+});
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'PharmaConnect — Toutes vos pharmacies, un seul espace',
@@ -9,19 +30,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
-        {children}
-        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-      </body>
+    <html lang="fr" className={`${inter.variable} ${playfair.variable} ${manrope.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

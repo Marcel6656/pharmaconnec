@@ -26,6 +26,7 @@ interface PricingViewProps {
   say: (s: string) => void;
   currentLang?: Language;
   onSelectPlan?: (plan: AppData['plans'][number]) => void;
+  go?: (p: string) => void;
 }
 
 export function PricingView({
@@ -38,6 +39,7 @@ export function PricingView({
   say,
   currentLang = 'fr',
   onSelectPlan,
+  go,
 }: PricingViewProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
@@ -130,8 +132,13 @@ export function PricingView({
             </div>
             <p>{plan.description}</p>
             <div className="price-value">
+              {planPeriod !== 'monthly' && (
+                <s className="pc-price-ref">
+                  {money(plan.monthly * (planPeriod === 'quarterly' ? 3 : 12))}
+                </s>
+              )}{' '}
               {money(plan[planPeriod as 'monthly' | 'quarterly' | 'yearly'])}
-              <small> / {planPeriod === 'monthly' ? 'mois' : planPeriod === 'quarterly' ? 'trimestre' : 'an'}</small>
+              <small> / {planPeriod === 'monthly' ? (isEn ? 'month' : 'mois') : planPeriod === 'quarterly' ? (isEn ? 'quarter' : 'trimestre') : (isEn ? 'year' : 'an')}</small>
             </div>
             <div className="price-divider" />
             {plan.features.map(f => (
@@ -159,7 +166,14 @@ export function PricingView({
         ))}
       </div>
 
-      <div className="pricing-footnote">Tarifs indicatifs en FCFA. Abonnements payables par Mobile Money auprès des opérateurs disponibles.</div>
+      <div className="pricing-footnote">
+        Tarifs fermes en FCFA (HT/TTC selon régime fiscal applicable). Paiement en une fois pour les offres trimestrielle et annuelle ; d’éventuels frais opérateur Mobile Money tiers peuvent s’appliquer.{' '}
+        {go && (
+          <button type="button" className="pc-inline-text-link" onClick={() => go('Conditions générales')}>
+            Voir les CGV &amp; le droit de rétractation de 14 jours
+          </button>
+        )}
+      </div>
 
       {/* Modèle SanteProche Écran 8 & Écran 6 intégrés sans cadre dur */}
       <div className="sp-pricing-showcase-grid">
@@ -189,7 +203,7 @@ export function PricingView({
             </button>
           </div>
           <div className="sp-pro-right-visual">
-            <img src="/images/cta-pharmacist.jpg" alt="Pharmacien partenaire" className="sp-pro-blended-portrait" />
+            <img src="/images/cta-pharmacist.jpg" alt={isEn ? 'Partner pharmacist' : 'Pharmacien partenaire'} className="sp-pro-blended-portrait" />
           </div>
           <SanteProcheWaveRibbon variant="dark" className="sp-pro-bottom-wave" />
         </div>
