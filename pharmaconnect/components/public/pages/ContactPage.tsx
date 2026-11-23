@@ -71,11 +71,20 @@ export function ContactPage({ say, currentLang = 'fr', go }: ContactPageProps) {
               {isEn ? 'Send a message' : 'Écrire un message'} <ArrowRight size={15} />
             </a>
             <a
-              href="mailto:contact@pharmaconnect.td"
+              href="mailto:tginnovation7@gmail.com"
               className="luxe-btn luxe-btn-outline"
               style={{ textDecoration: 'none' }}
             >
-              contact@pharmaconnect.td
+              tginnovation7@gmail.com
+            </a>
+            <a
+              href={buildWhatsAppUrl('+235 60 70 91 92', 'Bonjour PharmaConnect, je souhaite obtenir un renseignement.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="luxe-btn luxe-btn-outline"
+              style={{ textDecoration: 'none' }}
+            >
+              <ModernWhatsAppIcon size={15} /> +235 60 70 91 92
             </a>
           </div>
         </div>
@@ -234,7 +243,18 @@ export function ContactPage({ say, currentLang = 'fr', go }: ContactPageProps) {
               <div className="cg-detail-info-row">
                 <span className="cg-info-icon-pill"><ModernPhoneCallIcon size={18} /></span>
                 <div style={{ flex: 1 }}>
-                  <b>Horaires du support</b>
+                  <b>Téléphone, WhatsApp &amp; Horaires</b>
+                  <small>
+                    <a href="tel:+23560709192" className="pc-inline-text-link">+235 60 70 91 92</a> ·{' '}
+                    <a
+                      href={buildWhatsAppUrl('+235 60 70 91 92', 'Bonjour PharmaConnect, je souhaite contacter le support.')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="pc-inline-text-link"
+                    >
+                      WhatsApp direct
+                    </a>
+                  </small>
                   <small>Du lundi au vendredi de 8h00 à 18h30 via le formulaire ou par e-mail.</small>
                 </div>
               </div>
@@ -245,7 +265,7 @@ export function ContactPage({ say, currentLang = 'fr', go }: ContactPageProps) {
                 <span className="cg-info-icon-pill"><ModernChatEncryptedIcon size={18} /></span>
                 <div>
                   <b>E-mail officiel &amp; DPO</b>
-                  <small>Support : contact@pharmaconnect.td · RGPD : dpo@pharmaconnect.td</small>
+                  <small>Support &amp; RGPD : <a href="mailto:tginnovation7@gmail.com" className="pc-inline-text-link">tginnovation7@gmail.com</a></small>
                   <small>Traitement sous 24 à 48 heures ouvrées.</small>
                 </div>
               </div>
@@ -268,11 +288,11 @@ export function ContactPage({ say, currentLang = 'fr', go }: ContactPageProps) {
 
           <p className="hx-cta-center-text">
             Besoin d’un renseignement sur votre dossier pharmacie, un abonnement ou vos droits RGPD ?<br />
-            <ModernVerifiedShieldIcon size={14} /> Écrivez directement à notre équipe à contact@pharmaconnect.td.
+            <ModernVerifiedShieldIcon size={14} /> Écrivez directement à notre équipe à tginnovation7@gmail.com ou appelez le +235 60 70 91 92.
           </p>
 
           <a
-            href="mailto:contact@pharmaconnect.td"
+            href="mailto:tginnovation7@gmail.com"
             className="hx-cta-white-pill"
             style={{ textDecoration: 'none' }}
           >

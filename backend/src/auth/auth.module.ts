@@ -94,10 +94,47 @@ export class AuthService {
     return bcrypt.hash(password, 10);
   }
 
+  private async resolveUserSpace(user: User) {
+    if (user.role === 'ADMIN') {
+      return {
+        space: 'admin' as const,
+        redirectTo: '/admin',
+        defaultPage: 'Vue d’ensemble',
+        primaryPharmacyId: null as number | null,
+        pharmacies: [] as Array<{ id: number; name: string; status: string }>,
+      };
+    }
+
+    const pharmacies = await this.prisma.pharmacy.findMany({
+      where: { ownerId: user.id },
+      select: { id: true, name: true, status: true },
+      orderBy: { id: 'asc' },
+    });
+
+    if (user.role === 'PHARMACIST' || pharmacies.length > 0) {
+      return {
+        space: 'pharmacy' as const,
+        redirectTo: '/?space=pharmacy',
+        defaultPage: pharmacies.length > 0 ? 'Vue d’ensemble' : 'Mon établissement',
+        primaryPharmacyId: pharmacies[0]?.id ?? null,
+        pharmacies,
+      };
+    }
+
+    return {
+      space: 'visitor' as const,
+      redirectTo: '/?space=visitor',
+      defaultPage: 'visitorInbox',
+      primaryPharmacyId: null as number | null,
+      pharmacies: [] as Array<{ id: number; name: string; status: string }>,
+    };
+  }
+
   async issue(user: User) {
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    const routing = await this.resolveUserSpace(user);
     const accessToken = await this.jwt.signAsync({ sub: user.id, role: user.role, tv: user.tokenVersion });
-    return { accessToken, user: this.publicUser(user) };
+    return { accessToken, user: this.publicUser(user), ...routing };
   }
 
   publicUser(u: User) {
@@ -181,8 +218,8 @@ export class AuthService {
   }
 
   async google(dto: GoogleLoginDto) {
-    const targetRole = dto.role || 'VISITOR';
-    if (targetRole === 'ADMIN') {
+    const requestedRole = dto.role;
+    if (requestedRole === 'ADMIN') {
       throw new ForbiddenException('La connexion Google n’est pas disponible pour l’espace administration.');
     }
 
@@ -190,15 +227,15 @@ export class AuthService {
     const linkedUser = await this.prisma.user.findUnique({ where: { googleSub: identity.sub } });
     let user: User;
     if (linkedUser) {
-      this.assertGoogleAccountAccess(linkedUser, targetRole);
+      this.assertGoogleAccountAccess(linkedUser, requestedRole);
       user = linkedUser;
     } else {
       const existing = await this.prisma.user.findUnique({ where: { email: identity.email } });
       if (existing) {
-        this.assertGoogleAccountAccess(existing, targetRole);
+        this.assertGoogleAccountAccess(existing, requestedRole);
         user = await this.linkGoogleAccount(existing, identity.sub, dto.currentPassword);
       } else {
-        if (targetRole !== 'VISITOR') {
+        if (requestedRole && requestedRole !== 'VISITOR') {
           throw new ForbiddenException('Associez d’abord un compte PharmaConnect professionnel à cette adresse.');
         }
         user = await this.prisma.user.create({
@@ -210,8 +247,14 @@ export class AuthService {
     return this.issue(user);
   }
 
-  private assertGoogleAccountAccess(user: User, targetRole: Role) {
-    if (!user.active || user.role !== targetRole) {
+  private assertGoogleAccountAccess(user: User, requestedRole?: Role) {
+    if (!user.active) {
+      throw new ForbiddenException('Ce compte est désactivé.');
+    }
+    if (user.role === 'ADMIN') {
+      throw new ForbiddenException('La connexion Google n’est pas disponible pour l’espace administration.');
+    }
+    if (requestedRole && user.role !== requestedRole) {
       throw new ForbiddenException('Ce compte Google n’autorise pas l’accès à cet espace.');
     }
   }
@@ -252,11 +295,8 @@ export class AuthService {
 
   async me(authUser: AuthUser) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: authUser.id } });
-    const pharmacies =
-      user.role === 'PHARMACIST'
-        ? await this.prisma.pharmacy.findMany({ where: { ownerId: user.id }, select: { id: true, name: true, status: true }, orderBy: { id: 'asc' } })
-        : [];
-    return { ...this.publicUser(user), pharmacies };
+    const routing = await this.resolveUserSpace(user);
+    return { ...this.publicUser(user), ...routing };
   }
 
   async updateMe(authUser: AuthUser, dto: UpdateMeDto) {

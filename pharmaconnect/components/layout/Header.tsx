@@ -304,7 +304,7 @@ export function Header({
     }
     setPharmacyLoginError('');
     setPharmacyLoginForm({ email: '', password: '' });
-    setModal('pharmacyLogin');
+    setModal('account');
   };
 
   const openPharmacySubPage = (subPage: string) => {
@@ -1252,26 +1252,50 @@ export function Header({
                       : 'L’accès direct aux espaces est verrouillé. Identifiez-vous pour accéder à votre portail.'}
                   </p>
                   <div className="mega-featured-dual-actions">
-                    <button
-                      type="button"
-                      className="mega-featured-cta"
-                      onClick={handlePharmacySpaceClick}
-                    >
-                      <Lock size={14} />
-                      {isEn ? 'Sign In · Pharmacy' : 'S’identifier · Pharmacie'}
-                      <ArrowRight size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="mega-featured-secondary-cta"
-                      onClick={() => openVisitorModal(visitorLoggedIn ? 'visitorInbox' : 'account')}
-                    >
-                      <User size={14} />
-                      {visitorLoggedIn
-                        ? (isEn ? 'My Patient Space' : 'Mon espace patient')
-                        : (isEn ? 'Sign In · My Account' : 'S’identifier · Mon compte')}
-                      <ArrowRight size={13} />
-                    </button>
+                    {pharmacyLoggedIn ? (
+                      <button
+                        type="button"
+                        className="mega-featured-cta"
+                        onClick={handlePharmacySpaceClick}
+                      >
+                        <ArrowRight size={14} />
+                        {isEn ? 'Open Pharmacy Space' : 'Ouvrir l’espace pharmacie'}
+                      </button>
+                    ) : visitorLoggedIn ? (
+                      <button
+                        type="button"
+                        className="mega-featured-cta"
+                        onClick={() => openVisitorModal('visitorInbox')}
+                      >
+                        <User size={14} />
+                        {isEn ? 'My Patient Space' : 'Mon espace patient'}
+                        <ArrowRight size={13} />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="mega-featured-cta"
+                          onClick={() => openVisitorModal('account')}
+                        >
+                          <Lock size={14} />
+                          {isEn ? 'Sign In' : 'Se connecter'}
+                          <ArrowRight size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="mega-featured-secondary-cta"
+                          onClick={() => {
+                            setActiveMegaMenu(null);
+                            setMobileNavOpen(false);
+                            go('Inscription pharmacie');
+                          }}
+                        >
+                          <ModernDigitalStoreIcon size={14} />
+                          {isEn ? 'Register Pharmacy' : 'Inscrire une pharmacie'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

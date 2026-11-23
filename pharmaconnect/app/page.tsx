@@ -268,10 +268,13 @@ export default function Home() {
       if (!active) return;
 
       let targetOwnerId: number | undefined;
-      if (me?.role === 'PHARMACIST') {
+      if (me?.space === 'pharmacy' || me?.role === 'PHARMACIST') {
         targetOwnerId = me.id;
         setAccountOwnerId(me.id);
         setPharmacyLoggedIn(true);
+        if (me.primaryPharmacyId) {
+          setSelectedPharmacyId(me.primaryPharmacyId);
+        }
       } else if (me?.role === 'VISITOR') {
         setVisitorAccount({
           name: me.name || me.email.split('@')[0],
@@ -328,7 +331,7 @@ export default function Home() {
       setPendingPharmacyPage('Vue d’ensemble');
       setPharmacyLoginError('');
       setPharmacyLoginForm({ email: '', password: '' });
-      setModal('pharmacyLogin');
+      setModal('account');
       return;
     }
     setQuery('');
@@ -344,7 +347,7 @@ export default function Home() {
       setPendingPharmacyPage('Vue d’ensemble');
       setPharmacyLoginError('');
       setPharmacyLoginForm({ email: '', password: '' });
-      setModal('pharmacyLogin');
+      setModal('account');
     }
   }, [space, pharmacyLoggedIn]);
 
@@ -767,8 +770,8 @@ export default function Home() {
       setPendingPharmacyPage('Abonnement');
       setPharmacyLoginError('');
       setPharmacyLoginForm({ email: '', password: '' });
-      setModal('pharmacyLogin');
-      say('Connectez-vous à votre espace pharmacie pour finaliser le paiement.');
+      setModal('account');
+      say('Connectez-vous pour finaliser le paiement.');
       return;
     }
     if (runningMutations.current.has('payment')) return;
@@ -872,7 +875,7 @@ export default function Home() {
           setPendingPharmacyPage(subPage);
           setPharmacyLoginError('');
           setPharmacyLoginForm({ email: '', password: '' });
-          setModal('pharmacyLogin');
+          setModal('account');
         }}
         onLogoutPharmacy={handlePharmacyLogout}
         onLogoutVisitor={handleVisitorLogout}

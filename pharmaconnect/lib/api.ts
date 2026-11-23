@@ -54,17 +54,35 @@ export async function fetchBackendState(token = getAuthToken()): Promise<(Partia
   }
 }
 
-type LoginSession = {
-  accessToken: string;
-  user: { id: number; email: string; name: string; role: string; phone?: string };
+export type AuthSpace = 'admin' | 'pharmacy' | 'visitor';
+
+export type AuthUserPayload = {
+  id: number;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'PHARMACIST' | 'VISITOR' | string;
+  provider?: string;
+  phone?: string;
 };
 
-export async function apiLogin(email: string, password: string, role: 'ADMIN' | 'PHARMACIST' | 'VISITOR') {
+export type LoginSession = {
+  accessToken: string;
+  user: AuthUserPayload;
+  space?: AuthSpace;
+  redirectTo?: string;
+  defaultPage?: string;
+  primaryPharmacyId?: number | null;
+  pharmacies?: Array<{ id: number; name: string; status: string }>;
+};
+
+export async function apiLogin(email: string, password: string, role?: 'ADMIN' | 'PHARMACIST' | 'VISITOR') {
   const result = await apiRequest<LoginSession>('/api/auth/login', 'POST', {
-    email: email.trim().toLowerCase(), password, role,
+    email: email.trim().toLowerCase(),
+    password,
+    ...(role ? { role } : {}),
   }, 'Connexion indisponible.');
   if (result.ok) {
-    if (!result.data?.accessToken || result.data.user?.role !== role) {
+    if (!result.data?.accessToken || !result.data.user?.id || (role && result.data.user?.role !== role)) {
       return { ok: false as const, error: 'Le serveur n’a pas renvoyé une session valide.' };
     }
     setAuthToken(result.data.accessToken);
@@ -76,7 +94,7 @@ export async function apiRegisterVisitor(
   name: string,
   email: string,
   password: string,
-): Promise<{ accessToken: string; user: { id: number; email: string; name: string; role: string; phone?: string } } | null> {
+): Promise<LoginSession | null> {
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -111,7 +129,12 @@ export type GoogleAuthResult =
   | {
     ok: true;
     accessToken: string;
-    user: { id: number; email: string; name: string; role: string; provider?: string; phone?: string };
+    user: AuthUserPayload;
+    space?: AuthSpace;
+    redirectTo?: string;
+    defaultPage?: string;
+    primaryPharmacyId?: number | null;
+    pharmacies?: Array<{ id: number; name: string; status: string }>;
   }
   | {
     ok: false;
@@ -162,7 +185,16 @@ export async function apiGoogleAuth(
       return { ok: false, error: msg || 'Échec de l’authentification Google.' };
     }
     if (data?.accessToken) setAuthToken(data.accessToken);
-    return { ok: true, accessToken: data.accessToken, user: data.user };
+    return {
+      ok: true,
+      accessToken: data.accessToken,
+      user: data.user,
+      space: data.space,
+      redirectTo: data.redirectTo,
+      defaultPage: data.defaultPage,
+      primaryPharmacyId: data.primaryPharmacyId,
+      pharmacies: data.pharmacies,
+    };
   } catch {
     return { ok: false, error: 'Impossible de contacter le serveur d’authentification.' };
   }
@@ -203,6 +235,10 @@ export async function apiMe(): Promise<{
   email: string;
   name: string;
   role: 'ADMIN' | 'PHARMACIST' | 'VISITOR';
+  space?: AuthSpace;
+  redirectTo?: string;
+  defaultPage?: string;
+  primaryPharmacyId?: number | null;
   provider?: string;
   phone?: string;
   pharmacies?: Array<{ id: number; name: string; status: string }>;

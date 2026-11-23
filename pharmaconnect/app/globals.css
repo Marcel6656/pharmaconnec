@@ -20766,6 +20766,27 @@ body,
   color: #d6efe7;
 }
 
+.luxe-footer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #d6efe7;
+}
+
+.luxe-footer-contact a {
+  color: #e0f5ed;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.luxe-footer-contact a:hover {
+  color: #bae6fd;
+  text-decoration: underline;
+}
+
 .luxe-footer-socials {
   display: flex;
   flex-wrap: wrap;

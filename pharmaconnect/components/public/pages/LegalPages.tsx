@@ -48,7 +48,7 @@ export function LegalNoticePage({ go, currentLang = 'fr' }: LegalCommonProps) {
               <li><span><b>Immatriculation &amp; TVA :</b> [À compléter : n° SIRET / RCS / Registre du commerce et n° TVA intracommunautaire le cas échéant]</span></li>
               <li><span><b>Siège social :</b> Avenue Charles de Gaulle, N’Djamena, Tchad · [À compléter : adresse précise de l’établissement ou du représentant UE]</span></li>
               <li><span><b>Directeur de la publication :</b> [À compléter : Nom et Prénom du représentant légal]</span></li>
-              <li><span><b>Contact officiel :</b> contact@pharmaconnect.td · DPO / RGPD : dpo@pharmaconnect.td</span></li>
+              <li><span><b>Contact officiel &amp; DPO / RGPD :</b> tginnovation7@gmail.com · Téléphone / WhatsApp : +235 60 70 91 92</span></li>
             </ul>
           </section>
 
@@ -153,8 +153,8 @@ export function TermsPage({ go, currentLang = 'fr' }: LegalCommonProps) {
             <ul className="about-list cg-about-list-clean">
               <li><span><b>Champ d’application (art. L.221-18 et L.221-3 C. conso) :</b> En France, les professionnels employant au plus <b>5 salariés</b> (lorsque l’abonnement logiciel/annuaire n’entre pas dans le champ principal de leur activité officinale) bénéficient d’un droit de rétractation de <b>14 jours calendaires</b> à compter de la confirmation du paiement, sans avoir à motiver leur décision.</span></li>
               <li><span><b>Exécution immédiate pendant le délai :</b> Si l’officine demande l’activation immédiate de l’abonnement avant l’expiration des 14 jours, le remboursement reste dû au prorata des jours restants en cas d’exercice du droit de rétractation (ou intégral si le service n’a pas encore été activé).</span></li>
-              <li><span><b>Modalités de remboursement :</b> Pour exercer votre droit de rétractation ou demander un remboursement en cas d’erreur de facturation / incident technique avéré, adressez votre demande avec le numéro de facture (`invoiceRef`) à <b>contact@pharmaconnect.td</b> ou via la page Contact. Le remboursement est effectué sous <b>14 jours</b> par le même moyen de paiement (ou virement/Mobile Money convenu).</span></li>
-              <li><span><b>Litiges &amp; médiation :</b> En cas de litige non résolu amiablement, l’utilisateur éligible peut saisir le médiateur de la consommation compétent (coordonnées communiquées sur simple demande à contact@pharmaconnect.td) ou la juridiction compétente selon le droit applicable.</span></li>
+              <li><span><b>Modalités de remboursement :</b> Pour exercer votre droit de rétractation ou demander un remboursement en cas d’erreur de facturation / incident technique avéré, adressez votre demande avec le numéro de facture (`invoiceRef`) à <b>tginnovation7@gmail.com</b>, par téléphone/WhatsApp au <b>+235 60 70 91 92</b> ou via la page Contact. Le remboursement est effectué sous <b>14 jours</b> par le même moyen de paiement (ou virement/Mobile Money convenu).</span></li>
+              <li><span><b>Litiges &amp; médiation :</b> En cas de litige non résolu amiablement, l’utilisateur éligible peut saisir le médiateur de la consommation compétent (coordonnées communiquées sur simple demande à tginnovation7@gmail.com) ou la juridiction compétente selon le droit applicable.</span></li>
             </ul>
             <div className="pc-legal-cta-row">
               <button type="button" className="outline-btn" onClick={() => go('Tarifs')}>

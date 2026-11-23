@@ -839,8 +839,8 @@ export class AdminService {
     return {
       freshnessDays,
       platformBanner: bannerRow?.value || '',
-      supportPhone: supportPhoneRow?.value || '+235 66 00 00 00',
-      supportEmail: supportEmailRow?.value || 'contact@pharmaconnect.org',
+      supportPhone: supportPhoneRow?.value || '+235 60 70 91 92',
+      supportEmail: supportEmailRow?.value || 'tginnovation7@gmail.com',
     };
   }
 

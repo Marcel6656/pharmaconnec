@@ -663,8 +663,8 @@ export function HomeView({
                 <h5>{isEn ? 'Verification & Support' : 'Vérification & Support'}</h5>
                 <p>
                   {isEn
-                    ? 'Dedicated onboarding for accredited pharmacies and continuous catalog monitoring.'
-                    : 'Accompagnement dédié pour chaque officine et contrôle qualité permanent.'}
+                    ? 'Dedicated onboarding for accredited pharmacies and continuous catalog monitoring. Direct support: tginnovation7@gmail.com · +235 60 70 91 92.'
+                    : 'Accompagnement dédié pour chaque officine et contrôle qualité permanent. Support direct : tginnovation7@gmail.com · +235 60 70 91 92.'}
                 </p>
               </div>
               <div className="luxe-contact-item">

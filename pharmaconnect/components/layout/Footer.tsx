@@ -33,6 +33,11 @@ export function Footer({ go, currentLang = 'fr', onOpenCookieSettings }: FooterP
                 ? 'Verified pharmacies, transparent live stock and direct patient care in one refined digital platform.'
                 : 'Votre réseau de pharmacies agréées, produits vérifiés et accompagnement officinal en temps réel.'}
             </p>
+            <div className="luxe-footer-contact">
+              <a href="tel:+23560709192">+235 60 70 91 92</a>
+              <span aria-hidden="true">·</span>
+              <a href="mailto:tginnovation7@gmail.com">tginnovation7@gmail.com</a>
+            </div>
             <div className="luxe-footer-socials" aria-label={isEn ? 'Social networks' : 'Réseaux sociaux'}>
               <a
                 href={process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://www.facebook.com/pharmaconnect'}
@@ -47,7 +52,7 @@ export function Footer({ go, currentLang = 'fr', onOpenCookieSettings }: FooterP
                 <span>Facebook</span>
               </a>
               <a
-                href={process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/?text=Bonjour%20PharmaConnect'}
+                href={process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/23560709192?text=Bonjour%20PharmaConnect'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="luxe-social-link"

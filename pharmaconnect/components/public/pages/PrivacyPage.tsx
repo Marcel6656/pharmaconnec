@@ -100,7 +100,7 @@ export function PrivacyPage({
               <h3>1. Responsable du traitement &amp; Données de santé (art. 9 RGPD)</h3>
             </div>
             <p>
-              Le responsable du traitement est <b>KAYRA Innovation — PharmaConnect</b> (contact DPO : <b>dpo@pharmaconnect.td</b>).
+              Le responsable du traitement est <b>KAYRA Innovation — PharmaConnect</b> (contact DPO : <b>tginnovation7@gmail.com</b> · Tél/WhatsApp : <b>+235 60 70 91 92</b>).
               Lorsque vous adressez un message à une pharmacie concernant un médicament ou un besoin de soin, ce message peut révéler une donnée de santé au sens de l’article 9 du RGPD : il n’est transmis qu’à la pharmacie destinataire choisie et n’est jamais exploité à des fins publicitaires. Nous vous invitons à ne saisir que le strict nécessaire.
             </p>
           </section>
@@ -197,12 +197,12 @@ export function PrivacyPage({
 
             <p className="hx-cta-center-text">
               Pour exercer vos droits RGPD ou contacter notre délégué à la protection des données, écrivez à{' '}
-              <b>dpo@pharmaconnect.td</b>.
+              <b>tginnovation7@gmail.com</b> ou appelez le <b>+235 60 70 91 92</b>.
             </p>
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <a
-                href="mailto:dpo@pharmaconnect.td"
+                href="mailto:tginnovation7@gmail.com"
                 className="hx-cta-white-pill"
                 style={{ textDecoration: 'none' }}
               >

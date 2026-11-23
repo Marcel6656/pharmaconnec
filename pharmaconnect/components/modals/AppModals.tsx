@@ -44,6 +44,8 @@ import {
   apiRegisterVisitor,
   apiSendPublicMessage,
   apiUpdateMe,
+  AuthSpace,
+  AuthUserPayload,
   clearAuthToken,
   fetchGoogleAuthConfig,
   GoogleAuthConfig,
@@ -243,9 +245,7 @@ export function AppModals({
   const [visitorPasswordSaving, setVisitorPasswordSaving] = useState(false);
   const [visitorSecurityError, setVisitorSecurityError] = useState('');
   const [favoritePickerId, setFavoritePickerId] = useState('');
-  const gsiButtonVisitorRef = useRef<HTMLDivElement | null>(null);
-  const gsiButtonPharmacyRef = useRef<HTMLDivElement | null>(null);
-  const gsiRoleRef = useRef<'VISITOR' | 'PHARMACIST'>('VISITOR');
+  const gsiButtonRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setThirdPartyConsent(hasThirdPartyConsent());
@@ -266,8 +266,9 @@ export function AppModals({
   useEffect(() => {
     if (modal === 'message') setMessageConsent(false);
     if (modal === 'payment') setPaymentLegalAccepted(false);
-    if (modal === 'account') {
+    if (modal === 'account' || modal === 'pharmacyLogin') {
       setVisitorAuthError('');
+      setPharmacyLoginError('');
       setVisitorRegisterAccepted(false);
       setVisitorForm({
         name: visitorAccount.name || '',
@@ -295,49 +296,87 @@ export function AppModals({
     }
   }, [modal, visitorLoggedIn, visitorAccount.email, visitorAccount.name, visitorAccount.phone]);
 
-  const completeGoogleAuth = async (payload: GoogleAuthPayload, targetRole: 'VISITOR' | 'PHARMACIST') => {
-    setGoogleLoading(true);
-    setGoogleError('');
-    if (targetRole === 'PHARMACIST') setPharmacyLoginError('');
-    const currentPassword = targetRole === 'PHARMACIST' ? pharmacyLoginForm.password : visitorForm.password;
-    const res = await apiGoogleAuth({ ...payload, role: targetRole, currentPassword: currentPassword || undefined });
-    setGoogleLoading(false);
+  const applyAuthenticatedSession = async (
+    session: {
+      user: AuthUserPayload;
+      space?: AuthSpace;
+      redirectTo?: string;
+      defaultPage?: string;
+      primaryPharmacyId?: number | null;
+    },
+    welcomeMessage?: string,
+  ) => {
+    const resolvedSpace: AuthSpace =
+      session.space ||
+      (session.user.role === 'ADMIN'
+        ? 'admin'
+        : session.user.role === 'PHARMACIST'
+          ? 'pharmacy'
+          : 'visitor');
 
-    if (!res.ok) {
-      if (targetRole === 'PHARMACIST') {
-        setPharmacyLoginError(res.error);
-      } else {
-        setGoogleError(res.error);
+    if (resolvedSpace === 'admin') {
+      setVisitorLoggedIn?.(false);
+      setPharmacyLoggedIn(false);
+      setModal(null);
+      say('Connexion administrateur réussie. Redirection vers l’espace d’administration…');
+      if (typeof window !== 'undefined') {
+        window.location.assign(session.redirectTo || '/admin');
       }
       return;
     }
 
-    if (targetRole === 'PHARMACIST') {
+    if (resolvedSpace === 'pharmacy') {
+      const resolvedOwnerId = session.user.id;
       setPharmacyLoginForm({ email: '', password: '' });
-      const resolvedOwnerId = res.user.id;
       setAccountOwnerId(resolvedOwnerId);
       setVisitorLoggedIn?.(false);
       setVisitorAccount({ name: '', email: '' });
       setPharmacyLoggedIn(true);
+      const refreshed = await refreshStateFromBackend(resolvedOwnerId);
+      const targetPharmacyId =
+        session.primaryPharmacyId ||
+        refreshed?.pharmacies.find(p => p.ownerId === resolvedOwnerId)?.id;
+      if (targetPharmacyId) setSelectedPharmacyId(targetPharmacyId);
       setModal(null);
-      const targetPage = pendingPharmacyPage || 'Vue d’ensemble';
+      const targetPage = pendingPharmacyPage || session.defaultPage || 'Vue d’ensemble';
       openSpace('pharmacy', true);
       go(targetPage);
       setPendingPharmacyPage?.('Vue d’ensemble');
-      await refreshStateFromBackend(resolvedOwnerId);
-      say(`Connexion Google réussie. Bienvenue ${res.user.name} !`);
+      say(welcomeMessage || `Connexion réussie. Bienvenue ${session.user.name || ''} dans votre espace pharmacie.`);
       return;
     }
 
-    const cleanEmail = res.user.email.trim().toLowerCase();
-    const cleanName = res.user.name?.trim() || cleanEmail.split('@')[0];
+    const cleanEmail = session.user.email.trim().toLowerCase();
+    const cleanName = session.user.name?.trim() || cleanEmail.split('@')[0];
     setVisitorForm({ name: '', email: '', password: '' });
-    setVisitorAccount({ name: cleanName, email: cleanEmail, phone: res.user.phone || '', password: '', provider: res.user.provider === 'google' ? 'Google' : 'email' });
+    setVisitorAccount({
+      name: cleanName,
+      email: cleanEmail,
+      phone: session.user.phone || '',
+      password: '',
+      provider: session.user.provider === 'google' ? 'Google' : 'email',
+    });
     setPharmacyLoggedIn(false);
     setVisitorLoggedIn?.(true);
-    setModal('visitorInbox');
     await refreshStateFromBackend();
-    say(`Bienvenue ${cleanName} ! Connexion à votre compte via Google réussie.`);
+    setModal('visitorInbox');
+    say(welcomeMessage || `Connexion réussie. Bienvenue ${cleanName} !`);
+  };
+
+  const completeGoogleAuth = async (payload: GoogleAuthPayload) => {
+    setGoogleLoading(true);
+    setGoogleError('');
+    setVisitorAuthError('');
+    const currentPassword = visitorForm.password;
+    const res = await apiGoogleAuth({ ...payload, currentPassword: currentPassword || undefined });
+    setGoogleLoading(false);
+
+    if (!res.ok) {
+      setGoogleError(res.error);
+      return;
+    }
+
+    await applyAuthenticatedSession(res, `Bienvenue ${res.user.name} ! Connexion via Google réussie.`);
   };
 
   const completeGoogleAuthRef = useRef(completeGoogleAuth);
@@ -401,7 +440,6 @@ export function AppModals({
 
   useEffect(() => {
     if (modal !== 'account' && modal !== 'pharmacyLogin') return;
-    gsiRoleRef.current = modal === 'pharmacyLogin' ? 'PHARMACIST' : 'VISITOR';
     setGoogleError('');
     let active = true;
 
@@ -435,12 +473,12 @@ export function AppModals({
       client_id: googleConfig.clientId,
       callback: response => {
         if (response.credential) {
-          void completeGoogleAuthRef.current({ idToken: response.credential }, gsiRoleRef.current);
+          void completeGoogleAuthRef.current({ idToken: response.credential });
         }
       },
     });
 
-    const targetEl = modal === 'pharmacyLogin' ? gsiButtonPharmacyRef.current : gsiButtonVisitorRef.current;
+    const targetEl = gsiButtonRef.current;
     if (targetEl) {
       targetEl.innerHTML = '';
       gAccounts.id.renderButton(targetEl, {
@@ -459,10 +497,9 @@ export function AppModals({
   const targetPharmacy = data.pharmacies.find(x => x.id === selectedPharmacy) || data.pharmacies[0];
   const targetProduct = selectedProduct ? data.products.find(x => x.id === selectedProduct) : null;
 
-  const handleGoogleButtonClick = async (targetRole: 'VISITOR' | 'PHARMACIST') => {
-    gsiRoleRef.current = targetRole;
+  const handleGoogleButtonClick = async () => {
     setGoogleError('');
-    if (targetRole === 'PHARMACIST') setPharmacyLoginError('');
+    setVisitorAuthError('');
 
     if (!hasThirdPartyConsent()) {
       const msg = 'L’authentification Google requiert l’activation des services tiers dans vos préférences cookies.';
@@ -474,9 +511,7 @@ export function AppModals({
     if (!googleConfig?.clientId) setGoogleConfig(cfg);
 
     if (!cfg.clientId) {
-      const msg = 'Connexion Google non configurée (renseignez GOOGLE_CLIENT_ID dans backend/.env).';
-      if (targetRole === 'PHARMACIST') setPharmacyLoginError(msg);
-      else setGoogleError(msg);
+      setGoogleError('Connexion Google non configurée (renseignez GOOGLE_CLIENT_ID dans backend/.env).');
       return;
     }
 
@@ -487,9 +522,7 @@ export function AppModals({
 
     const oauth2 = (window as GoogleWindow).google?.accounts?.oauth2;
     if (!oauth2) {
-      const msg = 'Le service Google Identity est bloqué ou inaccessible sur ce navigateur (vérifiez votre connexion Internet ou désactivez votre bloqueur de contenu pour localhost).';
-      if (targetRole === 'PHARMACIST') setPharmacyLoginError(msg);
-      else setGoogleError(msg);
+      setGoogleError('Le service Google Identity est bloqué ou inaccessible sur ce navigateur (vérifiez votre connexion Internet ou désactivez votre bloqueur de contenu pour localhost).');
       return;
     }
 
@@ -498,12 +531,10 @@ export function AppModals({
       scope: 'openid email profile',
       callback: response => {
         if (response.error || !response.access_token) {
-          const msg = response.error_description || 'Connexion Google annulée ou refusée.';
-          if (targetRole === 'PHARMACIST') setPharmacyLoginError(msg);
-          else setGoogleError(msg);
+          setGoogleError(response.error_description || 'Connexion Google annulée ou refusée.');
           return;
         }
-        void completeGoogleAuth({ accessToken: response.access_token }, targetRole);
+        void completeGoogleAuth({ accessToken: response.access_token });
       },
     });
     client.requestAccessToken({ prompt: 'select_account' });
@@ -729,7 +760,7 @@ export function AppModals({
                       setPendingPharmacyPage?.('Abonnement');
                       setPharmacyLoginError('');
                       setPharmacyLoginForm({ email: '', password: '' });
-                      setModal('pharmacyLogin');
+                      setModal('account');
                     }}
                   >
                     <ModernCreditCardPlanIcon size={15} /> Se connecter pour payer
@@ -785,12 +816,12 @@ export function AppModals({
         </Modal>
       )}
 
-      {modal === 'account' && (
+      {(modal === 'account' || modal === 'pharmacyLogin') && (
         <div
           className="modal-overlay"
           role="dialog"
           aria-modal="true"
-          aria-label="Compte patient ou visiteur"
+          aria-label="Connexion à votre compte PharmaConnect"
           onMouseDown={e => {
             if (e.target === e.currentTarget) {
               setModal(null);
@@ -799,7 +830,7 @@ export function AppModals({
         >
           <div className="modal-window gm-auth-window">
             <div className="gm-auth-card">
-              {/* Moitié gauche : Visuel officine & présentation patient (Modèle GamerMeld) */}
+              {/* Moitié gauche : Visuel officine & présentation portail unique */}
               <div className="gm-auth-left">
                 <img
                   src="/images/hero-pharmacist.jpg"
@@ -814,52 +845,31 @@ export function AppModals({
                   </div>
 
                   <div className="gm-left-center">
-                    <h3>REJOIGNEZ DES PATIENTS PRÈS DE VOUS…</h3>
+                    <h3>UN SEUL ACCÈS POUR CHAQUE PROFIL…</h3>
                     <p>
-                      Retrouvez vos échanges confidentiels avec les officines, sauvegardez vos recherches et vérifiez les stocks en direct.
+                      Connectez-vous avec vos identifiants : le serveur identifie votre compte et vous dirige automatiquement vers votre espace Patient, Pharmacie ou Administration.
                     </p>
                     <button
                       type="button"
                       className="gm-register-pill-btn"
                       onClick={() => {
-                        setPharmacyLoginError('');
-                        setPharmacyLoginForm({ email: '', password: '' });
-                        setModal('pharmacyLogin');
-                      }}
-                    >
-                      ESPACE PHARMACIE
-                    </button>
-                  </div>
-
-                  <div className="gm-carousel-dots" aria-label="Changer de mode de connexion">
-                    <button
-                      type="button"
-                      className="gm-dot active"
-                      aria-label="Compte Patient"
-                      onClick={() => setModal('account')}
-                    />
-                    <button
-                      type="button"
-                      className="gm-dot"
-                      aria-label="Espace Pharmacie"
-                      onClick={() => {
-                        setModal('pharmacyLogin');
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="gm-dot"
-                      aria-label="Inscrire une pharmacie"
-                      onClick={() => {
+                        setModal(null);
                         setExistingAccountRegistration(false);
                         setModal('register');
                       }}
-                    />
+                    >
+                      INSCRIRE MON OFFICINE
+                    </button>
+                  </div>
+
+                  <div className="gm-carousel-dots" aria-hidden="true">
+                    <span className="gm-dot active" />
+                    <span className="gm-dot" />
                   </div>
                 </div>
               </div>
 
-              {/* Moitié droite : Formulaire sur dégradé Vert Menthe → Vert Pin */}
+              {/* Moitié droite : Formulaire unique (Connexion / Inscription patient) */}
               <div className="gm-auth-right">
                 <button
                   type="button"
@@ -871,23 +881,6 @@ export function AppModals({
                 >
                   <X size={18} />
                 </button>
-
-                <div className="gm-role-switch-top">
-                  <button type="button" className="gm-role-chip active">
-                    <ModernUserBadgeIcon size={14} /> Patient / Visiteur
-                  </button>
-                  <button
-                    type="button"
-                    className="gm-role-chip"
-                    onClick={() => {
-                      setPharmacyLoginError('');
-                      setPharmacyLoginForm({ email: '', password: '' });
-                      setModal('pharmacyLogin');
-                    }}
-                  >
-                    <ModernDigitalStoreIcon size={14} /> Espace Pharmacie
-                  </button>
-                </div>
 
                 <form
                   className="gm-form-stack"
@@ -909,7 +902,7 @@ export function AppModals({
                         return;
                       }
                       setVisitorAuthLoading(true);
-                      const apiRes = await apiLogin(emailLower, pass, 'VISITOR');
+                      const apiRes = await apiLogin(emailLower, pass);
                       setVisitorAuthLoading(false);
 
                       if (!apiRes.ok) {
@@ -917,13 +910,7 @@ export function AppModals({
                         return;
                       }
 
-                      const resolvedName = apiRes.data.user.name?.trim() || emailLower.split('@')[0];
-                      setVisitorAccount({ name: resolvedName, email: emailLower, phone: apiRes.data.user.phone || '', password: '', provider: 'email' });
-                      setPharmacyLoggedIn(false);
-                      setVisitorLoggedIn?.(true);
-                      await refreshStateFromBackend();
-                      setModal('visitorInbox');
-                      say(`Connexion réussie. Bienvenue ${resolvedName} !`);
+                      await applyAuthenticatedSession(apiRes.data);
                       return;
                     }
 
@@ -949,19 +936,17 @@ export function AppModals({
                       return;
                     }
 
-                    const resolvedName = apiRes.user.name?.trim() || cleanName;
-                    setVisitorAccount({ name: resolvedName, email: emailLower, phone: apiRes.user.phone || '', password: '', provider: 'email' });
-                    setPharmacyLoggedIn(false);
-                    setVisitorLoggedIn?.(true);
-                    await refreshStateFromBackend();
-                    setModal('visitorInbox');
-                    say(`Compte visiteur créé. Bienvenue ${resolvedName} !`);
+                    await applyAuthenticatedSession(apiRes, `Compte créé. Bienvenue ${apiRes.user.name?.trim() || cleanName} !`);
                   }}
                 >
-                  <h2>Mon compte · Patient / Visiteur</h2>
-                  <p className="gm-form-sub">Authentifiez-vous ou créez votre compte pour accéder à vos échanges.</p>
+                  <h2>{visitorAuthMode === 'login' ? 'Connexion à votre espace' : 'Créer un compte patient'}</h2>
+                  <p className="gm-form-sub">
+                    {visitorAuthMode === 'login'
+                      ? 'Patient, pharmacie ou administration : vous êtes orienté automatiquement selon votre compte.'
+                      : 'Créez votre compte patient/visiteur pour suivre vos échanges et favoris.'}
+                  </p>
 
-                  <div className="gm-mode-tabs" role="tablist" aria-label="Mode d’authentification visiteur">
+                  <div className="gm-mode-tabs" role="tablist" aria-label="Mode d’authentification">
                     <button
                       type="button"
                       role="tab"
@@ -1016,15 +1001,15 @@ export function AppModals({
                             type="button"
                             className="gm-google-pill-btn"
                             disabled={googleLoading}
-                            onClick={() => handleGoogleButtonClick('VISITOR')}
+                            onClick={() => handleGoogleButtonClick()}
                           >
                             <ModernGoogleLogoIcon size={18} />
-                            <span>{googleLoading ? 'Connexion Google en cours…' : 'S’inscrire / Continuer avec Google'}</span>
+                            <span>{googleLoading ? 'Connexion Google en cours…' : 'Continuer avec Google'}</span>
                           </button>
                         )}
 
                         {gsiLoaded && (
-                          <div ref={gsiButtonVisitorRef} className="gm-gsi-official-slot" />
+                          <div ref={gsiButtonRef} className="gm-gsi-official-slot" />
                         )}
                       </div>
 
@@ -1094,9 +1079,14 @@ export function AppModals({
                     {visitorAuthLoading
                       ? 'VÉRIFICATION…'
                       : visitorAuthMode === 'login'
-                        ? 'SE CONNECTER À MON COMPTE'
+                        ? 'SE CONNECTER'
                         : 'CRÉER ET OUVRIR MON COMPTE'}
                   </button>
+
+                  <div className="gm-security-caption">
+                    <ModernVerifiedShieldIcon size={14} />
+                    <span>Identification sécurisée · Redirection automatique selon votre compte</span>
+                  </div>
                 </form>
 
                 <div className="gm-auth-copyright">
@@ -1725,229 +1715,6 @@ export function AppModals({
           </Modal>
         );
       })()}
-
-      {modal === 'pharmacyLogin' && (
-        <div
-          className="modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Connexion à l'espace pharmacie"
-          onMouseDown={e => {
-            if (e.target === e.currentTarget) setModal(null);
-          }}
-        >
-          <div className="modal-window gm-auth-window">
-            <div className="gm-auth-card">
-              {/* Moitié gauche : Visuel officine & inscription (Modèle GamerMeld) */}
-              <div className="gm-auth-left">
-                <img
-                  src="/images/pharmacy-interior.jpg"
-                  alt=""
-                  className="gm-auth-bg-img"
-                />
-                <div className="gm-auth-left-overlay" />
-                <div className="gm-auth-left-inner">
-                  <div className="gm-brand-wordmark">
-                    <span>PHARMA</span>
-                    <strong>CONNECT</strong>
-                  </div>
-
-                  <div className="gm-left-center">
-                    <h3>CONNECTEZ VOTRE OFFICINE EN DIRECT…</h3>
-                    <p>
-                      Publiez vos stocks vérifiés, répondez aux patients et profitez de 14 jours d’essai gratuit après validation.
-                    </p>
-                    <button
-                      type="button"
-                      className="gm-register-pill-btn"
-                      onClick={() => {
-                        setModal(null);
-                        setExistingAccountRegistration(false);
-                        setModal('register');
-                      }}
-                    >
-                      INSCRIRE MON OFFICINE
-                    </button>
-                  </div>
-
-                  <div className="gm-carousel-dots" aria-label="Navigation entre espaces">
-                    <button
-                      type="button"
-                      className="gm-dot"
-                      aria-label="Compte Patient"
-                      onClick={() => {
-                        setModal('account');
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="gm-dot active"
-                      aria-label="Espace Pharmacie"
-                      onClick={() => setModal('pharmacyLogin')}
-                    />
-                    <button
-                      type="button"
-                      className="gm-dot"
-                      aria-label="Inscrire une pharmacie"
-                      onClick={() => {
-                        setExistingAccountRegistration(false);
-                        setModal('register');
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Moitié droite : Connexion sur dégradé Vert Menthe → Vert Pin */}
-              <div className="gm-auth-right">
-                <button
-                  type="button"
-                  className="gm-close-btn"
-                  aria-label="Fermer"
-                  onClick={() => {
-                    setModal(null);
-                  }}
-                >
-                  <X size={18} />
-                </button>
-
-                <div className="gm-role-switch-top">
-                  <button
-                    type="button"
-                    className="gm-role-chip"
-                    onClick={() => {
-                      setModal('account');
-                    }}
-                  >
-                    <ModernUserBadgeIcon size={14} /> Patient / Visiteur
-                  </button>
-                  <button type="button" className="gm-role-chip active">
-                    <ModernDigitalStoreIcon size={14} /> Espace Pharmacie
-                  </button>
-                </div>
-
-                <form
-                  className="gm-form-stack"
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    setPharmacyLoginError('');
-                    const emailLower = pharmacyLoginForm.email.trim().toLowerCase();
-                    const apiRes = await apiLogin(emailLower, pharmacyLoginForm.password, 'PHARMACIST');
-                    if (!apiRes.ok) {
-                      setPharmacyLoginError(apiRes.error);
-                      return;
-                    }
-                    const resolvedOwnerId = apiRes.data.user.id;
-                    setAccountOwnerId(resolvedOwnerId);
-                    const refreshed = await refreshStateFromBackend(resolvedOwnerId);
-                    const firstOwned = refreshed?.pharmacies.find(p => p.ownerId === resolvedOwnerId);
-                    if (firstOwned) setSelectedPharmacyId(firstOwned.id);
-                    setVisitorLoggedIn?.(false);
-                    setVisitorAccount({ name: '', email: '' });
-                    setPharmacyLoggedIn(true);
-                    setModal(null);
-                    const targetPage = pendingPharmacyPage || 'Vue d’ensemble';
-                    openSpace('pharmacy', true);
-                    go(targetPage);
-                    setPendingPharmacyPage?.('Vue d’ensemble');
-                    say('Connexion réussie. Bienvenue dans l’espace pharmacie.');
-                  }}
-                >
-                  <h2>Connexion à votre espace</h2>
-                  <p className="gm-form-sub">Portail réservé aux officines de santé agréées.</p>
-
-                  {pharmacyLoginError && (
-                    <div className="gm-error-alert">
-                      <ModernAlertWarningIcon size={15} />
-                      <span>{pharmacyLoginError}</span>
-                    </div>
-                  )}
-
-                  {googleConfig?.clientId && (
-                    <>
-                      <div className="gm-google-wrap">
-                        {googleError && (
-                          <div className="gm-error-alert" style={{ marginBottom: 8 }}>
-                            <ModernAlertWarningIcon size={15} />
-                            <div>
-                              <span>{googleError}</span>
-                              {!thirdPartyConsent && onOpenCookieSettings && (
-                                <button
-                                  type="button"
-                                  className="gm-cookie-inline-btn"
-                                  onClick={onOpenCookieSettings}
-                                >
-                                  Gérer les préférences cookies
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {!gsiLoaded && (
-                          <button
-                            type="button"
-                            className="gm-google-pill-btn"
-                            disabled={googleLoading}
-                            onClick={() => handleGoogleButtonClick('PHARMACIST')}
-                          >
-                            <ModernGoogleLogoIcon size={18} />
-                            <span>{googleLoading ? 'Connexion Google en cours…' : 'Continuer avec Google'}</span>
-                          </button>
-                        )}
-
-                        {gsiLoaded && (
-                          <div ref={gsiButtonPharmacyRef} className="gm-gsi-official-slot" />
-                        )}
-                      </div>
-
-                      <div className="gm-divider-line">
-                        <span>ou avec vos identifiants</span>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="gm-pill-input-wrap">
-                    <ModernMailEnvelopeIcon size={15} />
-                    <input
-                      type="email"
-                      required
-                      value={pharmacyLoginForm.email}
-                      onChange={e => setPharmacyLoginForm({ ...pharmacyLoginForm, email: e.target.value })}
-                      placeholder="E-mail professionnel"
-                    />
-                  </div>
-
-                  <div className="gm-pill-input-wrap">
-                    <ModernLockSecurityIcon size={15} />
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={pharmacyLoginForm.password}
-                      onChange={e => setPharmacyLoginForm({ ...pharmacyLoginForm, password: e.target.value })}
-                      placeholder="Mot de passe"
-                    />
-                  </div>
-
-                  <button type="submit" className="gm-white-submit-btn">
-                    SE CONNECTER
-                  </button>
-
-                  <div className="gm-security-caption">
-                    <ModernVerifiedShieldIcon size={14} />
-                    <span>Chiffrement SSL · Vérification d’agrément obligatoire</span>
-                  </div>
-                </form>
-
-                <div className="gm-auth-copyright">
-                  © 2026 PharmaConnect · KAYRA Innovation
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
