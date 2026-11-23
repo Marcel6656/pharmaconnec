@@ -20,13 +20,13 @@ interface PharmacyViewsProps {
   pharmacyId: number;
   activePharmacy?: Pharmacy;
   canOperatePharmacy?: boolean;
-  onLogout?: () => void;
+  onLogout?: (customNotice?: string) => void;
   onRequestCancellation?: () => void;
   myProducts: Product[];
   categories: string[];
   customCategories: () => string[];
-  adminTab: string;
-  setAdminTab: (t: string) => void;
+  productStatusFilter: string;
+  setProductStatusFilter: (t: string) => void;
   query: string;
   setQuery: (q: string) => void;
   categoryFilter: string;
@@ -51,7 +51,7 @@ interface PharmacyViewsProps {
   resetProductForm: (p?: Product) => void;
   duplicateProduct: (p: Product) => void;
   removeProduct: (id: number) => void;
-  productStatus: (id: number, s: any) => void;
+  productStatus: (id: number, s: 'Brouillon' | 'En attente' | 'Masqué' | 'Archivé') => void;
   updateStock: (id: number, price: number, stock: number) => Promise<boolean> | void;
   setMessageRead: (id: number) => void;
   sendReply: (threadId: number) => void;
@@ -74,8 +74,8 @@ export function PharmacyViews({
   myProducts,
   categories,
   customCategories,
-  adminTab,
-  setAdminTab,
+  productStatusFilter,
+  setProductStatusFilter,
   query,
   setQuery,
   categoryFilter,
@@ -83,6 +83,7 @@ export function PharmacyViews({
   customCategory,
   setCustomCategory,
   currentMessage,
+  setCurrentMessage,
   reply,
   setReply,
   planPeriod,
@@ -113,6 +114,7 @@ export function PharmacyViews({
   const [quickStockTarget, setQuickStockTarget] = useState<{ product: Product; price: string; stock: string } | null>(null);
 
   const openQuickStock = (p: Product) => {
+    if (!canOperatePharmacy) return;
     setQuickStockTarget({ product: p, price: String(p.price), stock: String(p.stock) });
   };
 
@@ -166,25 +168,26 @@ export function PharmacyViews({
       </form>
     </Modal>
   ) : null;
+
   if (!activePharmacy && page !== 'Paramètres') {
     return (
-      <section className="panel cg-modern-panel" style={{ padding: 28 }}>
+      <section className="panel cg-modern-panel pc-empty-establishment-panel">
         <Empty
           title="Aucun établissement rattaché à votre compte"
           detail="Inscrivez votre pharmacie ou ajoutez un établissement pour accéder au tableau de bord, au catalogue et à la messagerie."
+          action={
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => {
+                setExistingAccountRegistration(true);
+                setModal('register');
+              }}
+            >
+              Rattacher une pharmacie
+            </button>
+          }
         />
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={() => {
-              setExistingAccountRegistration(true);
-              setModal('register');
-            }}
-          >
-            Rattacher une pharmacie
-          </button>
-        </div>
       </section>
     );
   }
@@ -196,6 +199,7 @@ export function PharmacyViews({
           data={data}
           pharmacyId={pharmacyId}
           activePharmacy={activePharmacy}
+          canOperatePharmacy={canOperatePharmacy}
           myProducts={myProducts}
           go={go}
           resetProductForm={resetProductForm}
@@ -214,9 +218,12 @@ export function PharmacyViews({
       <>
         <ProductsManagePage
           myProducts={myProducts}
+          pharmacies={data.pharmacies}
+          activePharmacy={activePharmacy}
+          canOperatePharmacy={canOperatePharmacy}
           categories={categories}
-          adminTab={adminTab}
-          setAdminTab={setAdminTab}
+          productStatusFilter={productStatusFilter}
+          setProductStatusFilter={setProductStatusFilter}
           query={query}
           setQuery={setQuery}
           categoryFilter={categoryFilter}
@@ -233,7 +240,16 @@ export function PharmacyViews({
   }
 
   if (page === 'Stocks & prix') {
-    return <StocksPricesPage myProducts={myProducts} updateStock={updateStock} />;
+    return (
+      <StocksPricesPage
+        data={data}
+        pharmacyId={pharmacyId}
+        myProducts={myProducts}
+        categories={categories}
+        canOperatePharmacy={canOperatePharmacy}
+        updateStock={updateStock}
+      />
+    );
   }
 
   if (page === 'Catégories') {
@@ -259,8 +275,10 @@ export function PharmacyViews({
       <MessagesPage
         data={data}
         pharmacyId={pharmacyId}
+        activePharmacy={activePharmacy}
         canOperatePharmacy={canOperatePharmacy}
         currentMessage={currentMessage}
+        setCurrentMessage={setCurrentMessage}
         reply={reply}
         setReply={setReply}
         setMessageRead={setMessageRead}
@@ -286,6 +304,8 @@ export function PharmacyViews({
       <EstablishmentPage
         key={activePharmacy.id}
         activePharmacy={activePharmacy}
+        badges={data.badges}
+        canOperatePharmacy={canOperatePharmacy}
         onDocumentsUploaded={onDocumentsUploaded}
         setExistingAccountRegistration={setExistingAccountRegistration}
         setPharmacyForm={setPharmacyForm}
@@ -302,20 +322,40 @@ export function PharmacyViews({
         data={data}
         pharmacyId={pharmacyId}
         activePharmacy={activePharmacy}
+        canOperatePharmacy={canOperatePharmacy}
         planPeriod={planPeriod}
         setPlanPeriod={setPlanPeriod}
         changePlan={changePlan}
+        go={go}
         onRequestCancellation={onRequestCancellation}
       />
     );
   }
 
   if (page === 'Statistiques') {
-    return <StatisticsPage data={data} pharmacyId={pharmacyId} myProducts={myProducts} />;
+    return (
+      <StatisticsPage
+        data={data}
+        pharmacyId={pharmacyId}
+        activePharmacy={activePharmacy}
+        canOperatePharmacy={canOperatePharmacy}
+        myProducts={myProducts}
+        go={go}
+      />
+    );
   }
 
   if (page === 'Paramètres') {
-    return <SettingsPage data={data} pharmacyId={pharmacyId} canOperatePharmacy={canOperatePharmacy} updatePreferences={updatePreferences} say={say} onLogout={onLogout} />;
+    return (
+      <SettingsPage
+        data={data}
+        pharmacyId={pharmacyId}
+        canOperatePharmacy={canOperatePharmacy}
+        updatePreferences={updatePreferences}
+        say={say}
+        onLogout={onLogout}
+      />
+    );
   }
 
   return null;

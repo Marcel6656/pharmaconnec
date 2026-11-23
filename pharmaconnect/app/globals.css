@@ -4450,32 +4450,39 @@ a {
 
 .status-pill {
   display: inline-flex;
-  padding: 5px 7px;
-  font-size: 8px;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
-  background: #f0f3f4;
-  color: #788a8f
+  background: #f0f5f3;
+  color: #45665c;
 }
 
 .status-pill.green {
-  background: #eaf6f0;
-  color: #368c71
+  background: #eaf6f1;
+  color: #0d7a5f;
+}
+
+.status-pill.blue {
+  background: #eef6fc;
+  color: #0369a1;
 }
 
 .status-pill.amber {
-  background: #fff5e7;
-  color: #ae803b
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .status-pill.red {
   background: #fff0ed;
-  color: #b96e65
+  color: #b42318;
 }
 
 .status-pill.gray {
-  background: #f0f3f4;
-  color: #74878d
+  background: #f0f4f3;
+  color: #526862;
 }
 
 .table-actions {
@@ -5209,14 +5216,10 @@ a {
   color: #4c9b80
 }
 
-.badge-emblem.blue {
-  background: #eff5f8;
-  color: #719fb2
-}
-
+.badge-emblem.blue,
 .badge-emblem.gold {
-  background: #faf4e7;
-  color: #b39455
+  background: #eef6fc;
+  color: #0369a1;
 }
 
 .badge-emblem.slate {
@@ -8785,10 +8788,10 @@ a {
 }
 
 .side-brand-icon {
-  background: linear-gradient(135deg, #ffffff 0%, #e7f6f0 100%) !important;
-  color: var(--pine) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 6px 16px rgba(10, 26, 22, 0.2);
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(13, 122, 95, 0.25);
+  box-shadow: 0 6px 16px rgba(13, 122, 95, 0.2);
 }
 
 .cg-topbar-badge-btn {
@@ -10247,14 +10250,14 @@ a {
 }
 
 .sp-welcome-blended .white-btn {
-  background: #14352d !important;
+  background: #0d7a5f !important;
   color: #ffffff !important;
-  border: 1px solid #0f2922 !important;
-  box-shadow: 0 8px 20px rgba(20, 53, 45, 0.22);
+  border: 1px solid #0b5e49 !important;
+  box-shadow: 0 8px 20px rgba(13, 122, 95, 0.22);
 }
 
 .sp-welcome-blended .white-btn:hover {
-  background: #1c4a3f !important;
+  background: #0b5e49 !important;
   color: #ffffff !important;
   transform: translateY(-1px);
 }
@@ -10278,7 +10281,7 @@ a {
   padding: 22px 26px 32px;
   margin-bottom: 18px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #0b3954 0%, #0f5248 100%);
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
   color: #ffffff;
   overflow: hidden;
 }
@@ -17048,8 +17051,8 @@ body {
 }
 
 .pc-adm-login-brand {
-  background: linear-gradient(155deg, #0f2c25 0%, #173f36 52%, #1d4e43 100%);
-  color: #edf7f4;
+  background: linear-gradient(155deg, #0d7a5f 0%, #0b6e78 52%, #0369a1 100%);
+  color: #f4fbf9;
   padding: 38px 36px;
   display: flex;
   flex-direction: column;
@@ -17068,9 +17071,9 @@ body {
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: rgba(111, 210, 178, 0.16);
-  border: 1px solid rgba(111, 210, 178, 0.35);
-  color: #7ee0c0;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #ffffff;
   display: grid;
   place-items: center;
 }
@@ -17080,7 +17083,7 @@ body {
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 1.5px;
-  color: #7ee0c0;
+  color: #bae6fd;
 }
 
 .pc-adm-login-logo strong {
@@ -17235,6 +17238,7 @@ body {
 }
 
 .pc-adm-pass-wrap input {
+  width: 100%;
   padding-right: 42px;
 }
 
@@ -17285,43 +17289,44 @@ body {
 /* Scoped Workspace Shell */
 .pc-admin-shell .workspace {
   min-height: 100vh;
-  background: #f1f6f4;
+  background: #f4faf8;
 }
 
 .pc-admin-shell .workspace-sidebar {
   top: 0;
   width: 266px;
-  background: linear-gradient(180deg, #0f2923 0%, #16372f 60%, #0f2722 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-right: 1px solid #d7ebe3;
   padding: 18px 14px 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 4px 0 24px rgba(13, 122, 95, 0.04);
 }
 
 .pc-admin-shell .workspace-side-top {
   padding: 4px 6px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #e4f1ec;
 }
 
 .pc-admin-shell .side-brand-icon {
   width: 38px;
   height: 38px;
   border-radius: 11px;
-  background: rgba(111, 210, 178, 0.16);
-  color: #84e6c6;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
   flex-shrink: 0;
 }
 
 .pc-admin-shell .workspace-side-top b {
   font: 800 13.5px Manrope, sans-serif;
   letter-spacing: 0.3px;
-  color: #ffffff;
+  color: #163a30;
 }
 
 .pc-admin-shell .workspace-side-top small {
   font-size: 11px;
-  color: #9ec0b9;
+  color: #45665c;
   margin-top: 2px;
 }
 
@@ -17330,10 +17335,10 @@ body {
   margin-left: auto;
   width: 32px;
   height: 32px;
-  border: 0;
+  border: 1px solid #d7ebe3;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #d9ebe7;
+  background: #f2fbf7;
+  color: #163a30;
   place-items: center;
 }
 
@@ -17348,17 +17353,18 @@ body {
   gap: 9px;
   padding: 9px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #dcece8;
+  background: #f2fbf7;
+  border: 1px solid #cbe3da;
+  color: #0d7a5f;
   font-size: 12.5px;
-  font-weight: 600;
-  transition: background 0.15s ease;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .pc-adm-public-link:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
+  background: #eef6fc;
+  border-color: #93c5fd;
+  color: #0369a1;
 }
 
 .pc-adm-nav-scroll {
@@ -17375,7 +17381,7 @@ body {
 .pc-admin-shell .nav-group-label {
   font-size: 10px;
   letter-spacing: 1.15px;
-  color: #7ea69d;
+  color: #4a6b63;
   padding: 0 10px 6px;
   font-weight: 800;
 }
@@ -17385,55 +17391,58 @@ body {
   padding: 0 11px;
   border-radius: 10px;
   font-size: 12.8px;
-  font-weight: 500;
-  color: #cde0dc;
+  font-weight: 600;
+  color: #1e4238;
   gap: 10px;
   margin: 2px 0;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .pc-admin-shell .side-link svg {
-  color: #91bab2;
+  color: #4d756b;
   flex-shrink: 0;
 }
 
 .pc-admin-shell .side-link:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: #ffffff;
+  background: #f2fbf7;
+  color: #0d7a5f;
 }
 
 .pc-admin-shell .side-link.active {
-  background: linear-gradient(90deg, rgba(79, 168, 141, 0.34), rgba(79, 168, 141, 0.14));
-  border-left: 3px solid #6bd2b2;
+  background: linear-gradient(90deg, #e7f6f0 0%, #eef6fc 100%);
+  border-left: 3px solid #0d7a5f;
   padding-left: 8px;
-  color: #ffffff;
+  color: #0d7a5f;
   font-weight: 700;
 }
 
 .pc-admin-shell .side-link.active svg {
-  color: #84e6c6;
+  color: #0d7a5f;
 }
 
 .pc-admin-shell .side-badge {
-  background: #e2a460;
-  color: #142722;
+  background: #eef6fc;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
   font-size: 10.5px;
   font-weight: 800;
   height: 20px;
   min-width: 20px;
   padding: 0 6px;
+  border-radius: 999px;
 }
 
 .pc-admin-shell .side-link.active .side-badge {
-  background: #84e6c6;
-  color: #0e2520;
+  background: #0d7a5f;
+  border-color: #0d7a5f;
+  color: #ffffff;
 }
 
 .pc-adm-side-status {
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f4fbf8;
+  border: 1px solid #cde5dc;
   margin-bottom: 10px;
 }
 
@@ -17442,19 +17451,19 @@ body {
   align-items: center;
   gap: 7px;
   font-size: 12px;
-  color: #edf7f4;
+  color: #163a30;
 }
 
 .pc-adm-side-status small {
   display: block;
   margin-top: 3px;
   font-size: 11px;
-  color: #97b9b2;
+  color: #45665c;
 }
 
 .pc-admin-shell .account-mini {
   padding: 12px 4px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid #e4f1ec;
 }
 
 .pc-admin-shell .account-mini .avatar {
@@ -17466,12 +17475,12 @@ body {
 
 .pc-admin-shell .account-mini b {
   font-size: 12.5px;
-  color: #ffffff;
+  color: #163a30;
 }
 
 .pc-admin-shell .account-mini small {
   font-size: 10.5px;
-  color: #9bc0b8;
+  color: #45665c;
   margin-top: 2px;
   word-break: break-all;
 }
@@ -17482,12 +17491,12 @@ body {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #b7d2cc;
+  color: #45665c;
 }
 
 .pc-admin-shell .account-mini button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  background: #eef6fc;
+  color: #0369a1;
 }
 
 /* Main & Topbar */
@@ -17533,10 +17542,11 @@ body {
   white-space: nowrap;
 }
 
-.pc-adm-top-pill.warn {
-  background: #fff6e6;
-  border-color: #f3ddb0;
-  color: #9e6c21;
+.pc-adm-top-pill.warn,
+.pc-adm-top-pill.info {
+  background: #eef6fc;
+  border-color: #bae6fd;
+  color: #0369a1;
 }
 
 .pc-adm-top-pill.danger {
@@ -17690,8 +17700,8 @@ body {
 }
 
 .pc-admin-shell .admin-filter-row button.active {
-  background: var(--pine);
-  border-color: var(--pine);
+  background: #0d7a5f;
+  border-color: #0d7a5f;
   color: #ffffff;
 }
 
@@ -17779,8 +17789,8 @@ body {
 }
 
 .pc-adm-pole-tab em.has-items {
-  background: #f9e6c4;
-  color: #8f5c13;
+  background: #eef6fc;
+  color: #0369a1;
 }
 
 .pc-adm-pole-tab.active em {
@@ -17802,9 +17812,9 @@ body {
   gap: 24px;
   padding: 24px 28px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #13352d 0%, #1d4c41 58%, #256456 100%);
+  background: linear-gradient(135deg, #0d7a5f 0%, #0b6e78 55%, #0369a1 100%);
   color: #ffffff;
-  box-shadow: 0 16px 38px rgba(19, 53, 45, 0.16);
+  box-shadow: 0 16px 38px rgba(13, 122, 95, 0.18);
 }
 
 .pc-adm-hero-pill {
@@ -17904,8 +17914,8 @@ body {
 }
 
 .pc-adm-kpi-icon.gold {
-  background: #fbf4e4;
-  color: #9c7426;
+  background: #eef6fc;
+  color: #0369a1;
 }
 
 .pc-adm-kpi-icon.coral {
@@ -17933,7 +17943,7 @@ body {
 }
 
 .pc-adm-kpi-foot span.warn {
-  color: #a86b18;
+  color: #0369a1;
   font-weight: 700;
 }
 
@@ -17969,7 +17979,7 @@ body {
 }
 
 .pc-adm-segbar .seg-amber {
-  background: #e3a756;
+  background: #0284c7;
 }
 
 .pc-adm-segbar .seg-slate {
@@ -18011,7 +18021,7 @@ body {
 }
 
 .pc-adm-legend-grid .dot.amber {
-  background: #e3a756;
+  background: #0284c7;
 }
 
 .pc-adm-legend-grid .dot.slate {
@@ -18940,7 +18950,6 @@ a:focus-visible {
 }
 
 /* Prévention des débordements dans les espaces professionnels. */
-.workspace-main,
 .workspace-content,
 .pc-admin-shell .workspace-content {
   width: 100%;
@@ -21743,5 +21752,1182 @@ textarea:focus-visible,
   .pc-cookie-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* ==========================================================================
+   PHARMACY & ADMIN PROFESSIONAL DESIGN SYSTEM (MEDICAL GREEN · WHITE · BLUE)
+   ========================================================================== */
+
+/* Shared Professional Tables & Badges */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+  border: 1px solid #d7ebe3;
+  background: #ffffff;
+}
+
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f2fbf7;
+  color: #163a30;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.55px;
+  border-bottom: 1px solid #d7ebe3;
+}
+
+.data-table td.wrap-cell,
+.data-table th.wrap-cell {
+  white-space: normal;
+  min-width: 170px;
+  max-width: 340px;
+  line-height: 1.45;
+}
+
+.pc-lock-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fff0ed;
+  border: 1px solid #f5c2c7;
+  color: #b42318;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pc-doc-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pc-rule-row-readonly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f4fbf8;
+  border: 1px solid #d7ebe3;
+}
+
+.pc-rule-row-readonly strong {
+  display: block;
+  font-size: 13px;
+  color: #163a30;
+}
+
+.pc-rule-row-readonly small {
+  display: block;
+  font-size: 12px;
+  color: #45665c;
+  margin-top: 2px;
+}
+
+/* ---------------- Pharmacy Workspace (.pc-pharmacy-shell) ---------------- */
+.pc-pharmacy-shell.workspace {
+  min-height: 100vh;
+  background: #f4faf8;
+}
+
+.pc-pharmacy-shell .workspace-sidebar {
+  top: 0;
+  width: 266px;
+  background: #ffffff;
+  border-right: 1px solid #d7ebe3;
+  padding: 18px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 4px 0 24px rgba(13, 122, 95, 0.04);
+}
+
+.pc-pharmacy-shell .workspace-side-top {
+  padding: 4px 6px 14px;
+  border-bottom: 1px solid #e4f1ec;
+}
+
+.pc-pharmacy-shell .side-brand-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(13, 122, 95, 0.22);
+}
+
+.pc-pharmacy-shell .workspace-side-top b {
+  font: 800 13.5px Manrope, sans-serif;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .workspace-side-top small {
+  font-size: 11px;
+  color: #45665c;
+  margin-top: 2px;
+}
+
+.pc-pharmacy-shell .sidebar-close {
+  border-radius: 8px;
+  background: #f2fbf7;
+  color: #163a30;
+  border: 1px solid #d7ebe3;
+}
+
+.pc-pharmacy-shell .workspace-switch {
+  margin: 12px 0 6px;
+}
+
+.pc-pharmacy-shell .workspace-switch button {
+  border-radius: 10px;
+  background: #f2fbf7;
+  border: 1px solid #cbe3da;
+  color: #0d7a5f;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+.pc-pharmacy-shell .workspace-switch button:hover {
+  background: #eef6fc;
+  border-color: #93c5fd;
+  color: #0369a1;
+}
+
+.pc-pharmacy-shell .establishment-switch {
+  background: #f4fbf8;
+  border: 1px solid #d7ebe3;
+  border-radius: 12px;
+  padding: 10px 11px;
+  margin: 8px 0 6px;
+}
+
+.pc-pharmacy-shell .establishment-switch label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  color: #4a6b63;
+}
+
+.pc-pharmacy-shell .establishment-switch select {
+  margin-top: 6px;
+  border-radius: 9px;
+  border: 1px solid #cbe3da;
+  background: #ffffff;
+  color: #163a30;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+
+.pc-pharmacy-shell .establishment-switch .add-establishment-btn {
+  margin-top: 8px;
+  border-radius: 9px;
+  background: #eef6fc;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
+.pc-pharmacy-shell .establishment-switch .add-establishment-btn:hover {
+  background: #dbeafe;
+}
+
+.pc-pharmacy-shell .nav-group {
+  margin-top: 14px;
+}
+
+.pc-pharmacy-shell .nav-group-label {
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: #4a6b63;
+  padding: 0 10px 6px;
+  font-weight: 800;
+}
+
+.pc-pharmacy-shell .side-link {
+  height: 38px;
+  padding: 0 11px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e4238;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.pc-pharmacy-shell .side-link svg {
+  color: #4d756b;
+}
+
+.pc-pharmacy-shell .side-link:hover {
+  background: #f2fbf7;
+  color: #0d7a5f;
+}
+
+.pc-pharmacy-shell .side-link.active {
+  background: linear-gradient(90deg, #e7f6f0 0%, #eef6fc 100%);
+  border-left: 3px solid #0d7a5f;
+  padding-left: 8px;
+  color: #0d7a5f;
+  font-weight: 700;
+}
+
+.pc-pharmacy-shell .side-link.active svg {
+  color: #0d7a5f;
+}
+
+.pc-pharmacy-shell .nav-count {
+  background: #eef6fc;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+}
+
+.pc-pharmacy-shell .side-link.active .nav-count {
+  background: #0d7a5f;
+  border-color: #0d7a5f;
+  color: #ffffff;
+}
+
+.pc-pharmacy-shell .support-card {
+  margin-top: auto;
+  border-radius: 12px;
+  background: #f4fbf8;
+  border: 1px solid #d7ebe3;
+  padding: 12px;
+}
+
+.pc-pharmacy-shell .support-card b {
+  font-size: 12.5px;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .support-card small {
+  font-size: 11.5px;
+  color: #45665c;
+  line-height: 1.4;
+}
+
+.pc-pharmacy-shell .support-card button {
+  border-radius: 9px;
+  background: #0d7a5f;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.pc-pharmacy-shell .account-mini {
+  padding-top: 12px;
+  border-top: 1px solid #e4f1ec;
+}
+
+.pc-pharmacy-shell .account-mini .avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pc-pharmacy-shell .account-mini b {
+  font-size: 12.5px;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .account-mini small {
+  font-size: 11px;
+  color: #45665c;
+}
+
+.pc-pharmacy-shell .workspace-main {
+  margin-left: 266px;
+  width: calc(100% - 266px);
+  min-width: 0;
+}
+
+.pc-pharmacy-shell .workspace-topbar {
+  top: 0;
+  height: 68px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #d7ebe3;
+  padding: 0 28px;
+  gap: 14px;
+}
+
+.pc-pharmacy-shell .workspace-content {
+  padding: 24px clamp(18px, 2.4vw, 30px) 56px;
+}
+
+.pc-pharmacy-shell .breadcrumbs {
+  font-size: 12.5px;
+  color: #45665c;
+}
+
+.pc-breadcrumb-group {
+  font-weight: 600;
+  color: #0369a1;
+}
+
+.pc-breadcrumb-current {
+  font-weight: 700;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .account-chip .avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pc-pharmacy-shell .account-chip b {
+  font-size: 12.5px;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .account-chip small {
+  font-size: 11px;
+  color: #45665c;
+}
+
+.pc-topbar-add-btn {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.pc-topbar-bell-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #d7ebe3;
+  background: #ffffff;
+  color: #163a30;
+}
+
+.pc-topbar-bell-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #0369a1;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* Readable typography inside Pharmacy workspace */
+.pc-pharmacy-shell .metric-card > div {
+  font-size: 12px;
+  color: #45665c;
+}
+
+.pc-pharmacy-shell .metric-card strong {
+  font-size: 24px;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .metric-card small {
+  font-size: 11.5px;
+  color: #4a6b63;
+}
+
+.pc-pharmacy-shell .table-product b {
+  font-size: 13px;
+  color: #163a30;
+}
+
+.pc-pharmacy-shell .table-product small,
+.pc-pharmacy-shell .table-sub {
+  font-size: 11.5px;
+  color: #45665c;
+}
+
+.pc-pharmacy-shell .search-box {
+  border-radius: 11px;
+  padding: 0 12px;
+  min-height: 40px;
+}
+
+.pc-pharmacy-shell .search-box input {
+  font-size: 13px;
+}
+
+.pc-pharmacy-shell .category-chips button {
+  font-size: 12px;
+  padding: 7px 13px;
+  border-radius: 999px;
+}
+
+.pc-pharmacy-shell .plan-current,
+.pc-pharmacy-shell .subscription-current {
+  border-radius: 16px;
+}
+
+/* Status Banners, Filter Pills, Quick Actions & Empty States */
+.pc-status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  border: 1px solid #cbe3da;
+  background: #eefaf5;
+  color: #163a30;
+}
+
+.pc-status-banner--warning {
+  background: #eef6fc;
+  border-color: #93c5fd;
+  color: #0c4a6e;
+}
+
+.pc-status-banner--danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #881337;
+}
+
+.pc-status-banner-content {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.pc-status-banner-content svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pc-status-banner-content p {
+  margin: 2px 0 0;
+  line-height: 1.45;
+}
+
+.pc-status-banner-cta {
+  flex-shrink: 0;
+}
+
+.pc-empty-establishment-panel {
+  padding: 26px;
+}
+
+.pc-topbar-status {
+  flex-shrink: 0;
+}
+
+.pc-status-banner-content strong {
+  font-size: 13.5px;
+}
+
+.pc-dashboard-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.pc-quick-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cbe3da;
+  color: #163a30;
+  border-radius: 11px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.pc-quick-action-btn:hover {
+  border-color: #0d7a5f;
+  color: #0d7a5f;
+  background: #f2fbf7;
+}
+
+.pc-status-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.pc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #d5e8e0;
+  background: #ffffff;
+  color: #365950;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pc-status-pill:hover {
+  border-color: #0d7a5f;
+  color: #0d7a5f;
+}
+
+.pc-status-pill.active {
+  background: #0d7a5f;
+  border-color: #0d7a5f;
+  color: #ffffff;
+}
+
+.pc-pill-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(3, 105, 161, 0.1);
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pc-status-pill.active .pc-pill-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* Stocks & Prices Management Table */
+.pc-stock-table td {
+  vertical-align: middle;
+}
+
+.pc-stock-row.is-dirty {
+  background: #f2fbf7;
+}
+
+.pc-stock-row.is-locked {
+  opacity: 0.72;
+  background: #f8faf9;
+}
+
+.pc-stock-input {
+  width: 96px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #cbe3da;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #163a30;
+}
+
+.pc-stock-save-btn {
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.pc-stock-history-row td {
+  background: #f7fcfa;
+  padding: 10px 16px;
+}
+
+/* Categories, Subscription, Messages, Notifications, Stats, Establishment & Settings */
+.pc-cat-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #163a30;
+}
+
+.pc-cat-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef6fc;
+  color: #0369a1;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.pc-modal-warning {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eef6fc;
+  border: 1px solid #bae6fd;
+  color: #0c4a6e;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.pricing-grid.compact .is-current-plan {
+  border: 2px solid #0d7a5f;
+  background: #f4fbf8;
+}
+
+.pc-plan-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-plan-current-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #0d7a5f;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pc-cancellation-panel {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.pc-subscription-calendar-wrap {
+  margin-top: 16px;
+}
+
+.message-preview.is-unread {
+  background: #eefaf5;
+  border-left: 3px solid #0d7a5f;
+}
+
+.pc-message-preview-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pc-mobile-back-btn {
+  display: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbe3da;
+  background: #ffffff;
+  color: #163a30;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.notification-row.is-unread {
+  background: #eefaf5;
+  border-left: 3px solid #0d7a5f;
+}
+
+.pc-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pc-notification-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pc-stats-badges-bar,
+.pc-upgrade-callout,
+.pc-detail-header,
+.pc-add-establishment-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.pc-stats-badges-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #45665c;
+}
+
+.pc-upgrade-callout {
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.pc-upgrade-callout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.pc-upgrade-callout-body strong {
+  font-size: 14px;
+  color: #163a30;
+}
+
+.pc-upgrade-callout-body p {
+  margin: 0;
+  font-size: 13px;
+  color: #45665c;
+  line-height: 1.5;
+}
+
+.pc-threshold-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.pc-threshold-copy strong {
+  font-size: 13px;
+  color: #163a30;
+}
+
+.pc-threshold-copy small {
+  font-size: 12px;
+  color: #45665c;
+}
+
+.pc-stats-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.pc-establishment-badges-block {
+  margin-top: 14px;
+}
+
+.pc-establishment-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pc-doc-empty-wrap {
+  margin: 12px 0;
+}
+
+.pc-doc-locked-note {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #45665c;
+}
+
+.pc-threshold-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  margin-top: 12px;
+  border-top: 1px solid #e4f1ec;
+}
+
+.pc-threshold-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-threshold-controls input {
+  width: 84px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid #cbe3da;
+}
+
+.pc-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pc-logout-all-btn {
+  margin-top: 8px;
+}
+
+/* ---------------- Admin Back-Office Upgrades (.pc-admin-shell) ---------------- */
+.pc-adm-boot-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #f4faf8;
+  padding: 24px;
+}
+
+.pc-adm-boot-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 26px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #d7ebe3;
+  box-shadow: 0 18px 42px rgba(13, 122, 95, 0.1);
+}
+
+.pc-adm-boot-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+}
+
+.pc-adm-avatar {
+  background: linear-gradient(135deg, #0d7a5f 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.pc-adm-queue-trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pc-adm-queue-trigger strong {
+  color: #163a30;
+  text-decoration: underline;
+  text-decoration-color: rgba(13, 122, 95, 0.35);
+}
+
+.pc-admin-shell .badge-admin-card > b {
+  font-size: 14px;
+  color: #163a30;
+}
+
+.pc-admin-shell .badge-admin-card > p {
+  font-size: 12.5px;
+  color: #45665c;
+  min-height: 36px;
+}
+
+.pc-adm-badge-holders {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eef6fc;
+  color: #0369a1;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.pc-admin-shell .assign-badges-row {
+  overflow-x: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d7ebe3;
+  background: #ffffff;
+}
+
+.pc-admin-shell .assign-badges-row b {
+  font-size: 13.5px;
+  color: #163a30;
+}
+
+.pc-admin-shell .assign-badges-row small {
+  font-size: 12px;
+  color: #45665c;
+}
+
+.pc-assign-badge-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #d7ebe3;
+  background: #f8fcfa;
+  min-width: 170px;
+}
+
+.pc-assign-badge-item.pc-badge-expired {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.pc-assign-badge-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px !important;
+  font-weight: 700;
+  color: #163a30;
+  cursor: pointer;
+}
+
+.pc-badge-date-meta {
+  font-size: 11px;
+  color: #45665c;
+}
+
+.pc-badge-expired-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #b42318;
+}
+
+.pc-adm-ticket-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pc-adm-contact-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pc-adm-payment-summary {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f2fbf7;
+  border: 1px solid #cbe3da;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #163a30;
+  margin-bottom: 12px;
+}
+
+.pc-danger-confirm-box {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff5f5;
+  border: 1px solid #f5c2c7;
+  color: #58151c;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.pc-self-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef6fc;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.pc-adm-inspect-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.pc-adm-inspect-media img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid #d7ebe3;
+}
+
+.pc-adm-inspect-placeholder {
+  height: 210px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e0f2fe 0%, #e6f7f1 100%);
+  display: grid;
+  place-items: center;
+  color: #0d7a5f;
+}
+
+.pc-adm-inspect-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pc-adm-inspect-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #163a30;
+}
+
+.pc-adm-inspect-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4e5;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 12.5px;
+}
+
+.pc-adm-inspect-history {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e4f1ec;
+}
+
+.pc-adm-inspect-history-head {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #163a30;
+  margin-bottom: 8px;
+}
+
+.pc-pharmacy-shell .history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pc-pharmacy-shell .history-toggle:hover {
+  color: #0d7a5f;
+  text-decoration: underline;
+}
+
+.pc-pharmacy-shell .stock-history span {
+  background: #ffffff;
+  border: 1px solid #d7ebe3;
+  border-radius: 8px;
+  color: #45665c;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.pc-adm-plan-card .eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  color: #0d7a5f;
+}
+
+.cg-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cg-page-header-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 960px) {
+  .pc-pharmacy-shell .workspace-sidebar {
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    width: 274px;
+    z-index: 40;
+  }
+
+  .nav-open .pc-pharmacy-shell .workspace-sidebar {
+    transform: translateX(0);
+  }
+
+  .nav-open::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 38, 32, 0.36);
+    backdrop-filter: blur(2px);
+    z-index: 35;
+  }
+
+  .pc-pharmacy-shell .sidebar-close {
+    display: grid;
+    place-items: center;
+  }
+
+  .pc-pharmacy-shell .workspace-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .pc-pharmacy-shell .workspace-topbar {
+    top: 0;
+    padding: 0 16px;
+  }
+
+  .pc-pharmacy-shell .mobile-nav-toggle {
+    display: inline-flex;
+  }
+
+  .pc-stats-tables-grid,
+  .pc-adm-inspect-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  .pc-mobile-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .message-layout.has-thread .message-list {
+    display: none;
+  }
+
+  .message-layout:not(.has-thread) .message-thread {
+    display: none;
   }
 }

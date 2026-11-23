@@ -53,12 +53,12 @@ export class StateService {
       this.prisma.pharmacy.findMany({ where: pharmacyScope, include: { badges: { include: { badge: true } } }, orderBy: { id: 'asc' } }),
       user?.role === 'VISITOR'
         ? this.messages.visitorThreads(user).then(roots => roots.flatMap(root => [root, ...root.replies]).sort((a, b) => a.id - b.id))
-        : seesPrivateRecords
+        : isPharmacist
           ? this.prisma.message.findMany({
-            where: isAdmin ? undefined : { pharmacy: ownerScope },
+            where: { pharmacy: ownerScope },
             include: { thread: { select: { pharmacyId: true, threadId: true } } },
             orderBy: { id: 'asc' },
-          }).then(rows => isAdmin ? rows : rows.filter(row =>
+          }).then(rows => rows.filter(row =>
             row.threadId === null || (row.thread?.pharmacyId === row.pharmacyId && row.thread.threadId === null)))
           : Promise.resolve([]),
       this.prisma.badge.findMany({ orderBy: { id: 'asc' } }),
@@ -66,9 +66,8 @@ export class StateService {
       this.prisma.plan.findMany({ orderBy: { position: 'asc' } }),
       isAdmin || isPharmacist ? this.prisma.notice.findMany({ where: privatePharmacyScope, orderBy: { id: 'desc' } }) : Promise.resolve([]),
       isAdmin ? this.prisma.report.findMany({ orderBy: { id: 'desc' } }) : Promise.resolve([]),
-      user
+      isAdmin
         ? this.prisma.auditLog.findMany({
-          where: isAdmin ? undefined : { actorUserId: user.id },
           orderBy: { id: 'desc' },
           take: 500,
         })
@@ -128,7 +127,7 @@ export class StateService {
         };
       }),
       pharmacies: pharmacies.map(ph => {
-        const exposedBadges = seesPrivateRecords
+        const exposedBadges = isAdmin
           ? ph.badges
           : ph.badges.filter(b => b.badge.visible && isBadgeActive(b.badge, b.assignedAt));
         return {

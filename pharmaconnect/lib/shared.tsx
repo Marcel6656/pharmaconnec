@@ -108,9 +108,30 @@ export function isProductFresh(value: string, days: number, now = Date.now()) {
 export const makeId = () => Date.now() + Math.floor(Math.random() * 1000);
 
 export const statusClass = (s: string) => ({
-  Publié: 'green', 'En attente': 'amber', 'En vérification': 'amber', 'À corriger': 'red',
-  Refusé: 'red', Masqué: 'gray', Suspendu: 'red', Brouillon: 'gray', Archivé: 'gray',
-  Validée: 'green', Refusée: 'red', 'Abonnement expiré': 'red', Confirmé: 'green', Échoué: 'red'
+  Publié: 'green',
+  Validée: 'green',
+  Confirmé: 'green',
+  Actif: 'green',
+  Résolu: 'green',
+  Traité: 'green',
+  'En vérification': 'blue',
+  'En cours': 'blue',
+  Nouveau: 'blue',
+  'Non lu': 'blue',
+  Répondu: 'green',
+  'En attente': 'amber',
+  'À corriger': 'amber',
+  'À traiter': 'amber',
+  Refusé: 'red',
+  Refusée: 'red',
+  Suspendu: 'red',
+  Suspendue: 'red',
+  Échoué: 'red',
+  Rejeté: 'red',
+  'Abonnement expiré': 'red',
+  Brouillon: 'gray',
+  Masqué: 'gray',
+  Archivé: 'gray',
 } as Record<string, string>)[s] || 'gray';
 
 export function isBadgeActive(pharmacy: Pharmacy, badge: Badge) {
@@ -202,70 +223,18 @@ export function Metric({ title, value, detail, icon: Icon }: { title: string; va
 }
 
 export function Modal({ title, children, onClose, wide = false, icon }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean; icon?: React.ReactNode }) {
-  const windowRef = React.useRef<HTMLDivElement | null>(null);
-  const titleId = React.useId();
-
-  React.useEffect(() => {
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const panel = windowRef.current;
-    const focusables = panel
-      ? Array.from(panel.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
-      : [];
-    if (focusables[0]) {
-      focusables[0].focus();
-    } else {
-      panel?.focus();
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key === 'Tab' && panel) {
-        const items = Array.from(
-          panel.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'),
-        ).filter(el => el.offsetParent !== null);
-        if (items.length === 0) return;
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      previousFocus?.focus?.();
-    };
-  }, [onClose]);
-
   return (
-    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div
-        ref={windowRef}
-        className={`modal-window ${wide ? 'wide' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
+    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className={`modal-window ${wide ? 'wide' : ''}`}>
         <div className="modal-header">
           <div className="cg-modal-head-left">
             {icon && <div className="cg-modal-icon-badge">{icon}</div>}
             <div>
               <div className="eyebrow">PHARMACONNECT</div>
-              <h2 id={titleId}>{title}</h2>
+              <h2>{title}</h2>
             </div>
           </div>
-          <button type="button" className="icon-action" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
+          <button className="icon-action" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -284,25 +253,38 @@ export function isActiveTrial(pharmacy: Pharmacy) {
 
 export function ProductTable({
   rows,
+  products,
   onEdit,
   onQuickStock,
+  onStock,
+  onInspect,
   onDuplicate,
   onDelete,
   onStatus,
   onRequestModerationNote,
   admin = false,
+  canOperate = true,
+  allowArchiveWhenExpired = false,
   pharmacies = [],
 }: {
-  rows: Product[];
+  rows?: Product[];
+  products?: Product[];
   onEdit?: (p: Product) => void;
   onQuickStock?: (p: Product) => void;
+  onStock?: (p: Product) => void;
+  onInspect?: (p: Product) => void;
   onDuplicate?: (p: Product) => void;
   onDelete?: (id: number) => void;
   onStatus?: (id: number, s: ProductStatus, note?: string) => void;
   onRequestModerationNote?: (p: Product, s: ProductStatus) => void;
   admin?: boolean;
+  canOperate?: boolean;
+  allowArchiveWhenExpired?: boolean;
   pharmacies?: Pharmacy[];
 }) {
+  const list = rows ?? products ?? [];
+  const quickStockHandler = onQuickStock ?? onStock;
+
   const triggerModeration = (p: Product, s: ProductStatus, fallbackNote?: string) => {
     if (onRequestModerationNote) onRequestModerationNote(p, s);
     else onStatus?.(p.id, s, fallbackNote);
@@ -311,6 +293,9 @@ export function ProductTable({
   const buildItems = (p: Product): ActionMenuItem[] => {
     const items: ActionMenuItem[] = [];
     if (admin) {
+      if (onInspect) {
+        items.push({ key: 'inspect', label: 'Inspecter la fiche', icon: <Eye size={14} />, onClick: () => onInspect(p) });
+      }
       if (p.status === 'En attente') {
         items.push({ key: 'approve', label: 'Approuver et publier', icon: <Check size={14} />, variant: 'success', onClick: () => onStatus?.(p.id, 'Publié') });
         items.push({ key: 'fix', label: 'Demander correction', icon: <Pencil size={14} />, onClick: () => triggerModeration(p, 'À corriger', 'Correction demandée par l’administration.') });
@@ -334,28 +319,29 @@ export function ProductTable({
         items.push({ key: 'delete', label: 'Supprimer', icon: <Trash2 size={14} />, variant: 'danger', dividerBefore: true, onClick: () => onDelete(p.id) });
       }
     } else {
-      if (onEdit && p.status !== 'Refusé' && p.status !== 'Suspendu') {
+      const canModify = canOperate && p.status !== 'Refusé' && p.status !== 'Suspendu';
+      if (onEdit && canModify) {
         items.push({ key: 'edit', label: 'Modifier la fiche', icon: <Pencil size={14} />, onClick: () => onEdit(p) });
       }
-      if (onQuickStock && p.status !== 'Refusé' && p.status !== 'Suspendu' && p.status !== 'Archivé') {
-        items.push({ key: 'stock', label: 'Mettre à jour stock & prix', icon: <DollarSign size={14} />, onClick: () => onQuickStock(p) });
+      if (quickStockHandler && canModify && p.status !== 'Archivé') {
+        items.push({ key: 'stock', label: 'Mettre à jour stock & prix', icon: <DollarSign size={14} />, onClick: () => quickStockHandler(p) });
       }
-      if (onDuplicate) {
+      if (onDuplicate && canOperate) {
         items.push({ key: 'duplicate', label: 'Dupliquer en brouillon', icon: <Copy size={14} />, onClick: () => onDuplicate(p) });
       }
-      if (onStatus && (p.status === 'Brouillon' || p.status === 'À corriger' || p.status === 'Masqué')) {
+      if (onStatus && canOperate && (p.status === 'Brouillon' || p.status === 'À corriger' || p.status === 'Masqué')) {
         items.push({ key: 'submit', label: 'Soumettre à validation', icon: <Check size={14} />, variant: 'success', onClick: () => onStatus(p.id, 'En attente') });
       }
-      if (onStatus && p.status === 'Publié') {
+      if (onStatus && canOperate && p.status === 'Publié') {
         items.push({ key: 'hide', label: 'Masquer', icon: <EyeOff size={14} />, onClick: () => onStatus(p.id, 'Masqué') });
       }
-      if (onStatus && p.status === 'Archivé') {
+      if (onStatus && canOperate && p.status === 'Archivé') {
         items.push({ key: 'restore', label: 'Restaurer en brouillon', icon: <RotateCcw size={14} />, onClick: () => onStatus(p.id, 'Brouillon') });
       }
-      if (onStatus && p.status !== 'Archivé') {
+      if (onStatus && (canOperate || allowArchiveWhenExpired) && p.status !== 'Archivé' && p.status !== 'Refusé' && p.status !== 'Suspendu') {
         items.push({ key: 'archive', label: 'Archiver', icon: <FileCheck2 size={14} />, onClick: () => onStatus(p.id, 'Archivé') });
       }
-      if (onDelete) {
+      if (onDelete && p.status !== 'Refusé' && p.status !== 'Suspendu') {
         items.push({ key: 'delete', label: 'Supprimer', icon: <Trash2 size={14} />, variant: 'danger', dividerBefore: true, onClick: () => onDelete(p.id) });
       }
     }
@@ -378,7 +364,7 @@ export function ProductTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map(p => (
+          {list.map(p => (
             <tr key={p.id}>
               <td>
                 <div className="table-product">
@@ -406,7 +392,7 @@ export function ProductTable({
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && <Empty title="Aucun produit" detail="Aucune ligne ne correspond aux filtres sélectionnés." />}
+      {list.length === 0 && <Empty title="Aucun produit" detail="Aucune ligne ne correspond aux filtres sélectionnés." />}
     </div>
   );
 }
@@ -512,18 +498,18 @@ export function PharmacyTable({
   );
 }
 
-export function PaymentsTable({ payments, admin = false, onStatus, pharmacies = [] }: { payments: Payment[]; admin?: boolean; onStatus?: (id: number, status: 'Confirmé' | 'Échoué') => void; pharmacies?: Pharmacy[] }) {
+export function PaymentsTable({ payments, admin = false, hidePharmacyColumn = false, onStatus, pharmacies = [] }: { payments: Payment[]; admin?: boolean; hidePharmacyColumn?: boolean; onStatus?: (id: number, status: 'Confirmé' | 'Échoué') => void; pharmacies?: Pharmacy[] }) {
   return (
     <div className="table-scroll">
       <table className="data-table">
         <thead>
-          <tr><th>DATE</th><th>ÉTABLISSEMENT</th><th>FORMULE</th><th>PÉRIODE</th><th>MONTANT</th><th>MOYEN / RÉFÉRENCE</th><th>STATUT</th>{admin && <th>ACTION</th>}</tr>
+          <tr><th>DATE</th>{!hidePharmacyColumn && <th>ÉTABLISSEMENT</th>}<th>FORMULE</th><th>PÉRIODE</th><th>MONTANT</th><th>MOYEN / RÉFÉRENCE</th><th>STATUT</th>{admin && <th>ACTION</th>}</tr>
         </thead>
         <tbody>
           {payments.map(p => (
             <tr key={p.id}>
               <td>{p.date}</td>
-              <td>{pharmacies.find(x => x.id === p.pharmacyId)?.name || `Pharmacie #${p.pharmacyId}`}</td>
+              {!hidePharmacyColumn && <td>{pharmacies.find(x => x.id === p.pharmacyId)?.name || `Pharmacie #${p.pharmacyId}`}</td>}
               <td>{p.plan}</td>
               <td>{p.period}</td>
               <td>{money(p.amount)}</td>
@@ -541,9 +527,9 @@ export function PaymentsTable({ payments, admin = false, onStatus, pharmacies = 
                       items={
                         p.status === 'En attente'
                           ? [
-                              { key: 'confirm', label: 'Confirmer le paiement', icon: <Check size={14} />, variant: 'success', onClick: () => onStatus?.(p.id, 'Confirmé') },
-                              { key: 'fail', label: 'Marquer en échec', icon: <X size={14} />, variant: 'danger', dividerBefore: true, onClick: () => onStatus?.(p.id, 'Échoué') },
-                            ]
+                            { key: 'confirm', label: 'Confirmer le paiement', icon: <Check size={14} />, variant: 'success', onClick: () => onStatus?.(p.id, 'Confirmé') },
+                            { key: 'fail', label: 'Marquer en échec', icon: <X size={14} />, variant: 'danger', dividerBefore: true, onClick: () => onStatus?.(p.id, 'Échoué') },
+                          ]
                           : []
                       }
                     />

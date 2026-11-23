@@ -1,11 +1,12 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Activity, ArrowRight, Check, CheckCircle2, Eye, Layers, PhoneCall,
   Settings, ShieldAlert, Users,
 } from 'lucide-react';
 import { ActionMenu } from '@/components/shared/ActionMenu';
-import { AppData, Pharmacy, ProductStatus, Status, money } from '@/lib/shared';
+import { AppData, Pharmacy, Product, ProductStatus, Status, money } from '@/lib/shared';
 import {
   ModernAlertWarningIcon,
   ModernBellAlertIcon,
@@ -22,7 +23,7 @@ import { HealthSectionPayload } from '@/lib/health-section';
 interface AdminDashboardViewProps {
   data: AppData;
   pendingPharmacies: Pharmacy[];
-  pendingProducts: AppData['products'];
+  pendingProducts: Product[];
   pendingPaymentsCount: number;
   openReportsCount: number;
   openContactsCount: number;
@@ -32,6 +33,7 @@ interface AdminDashboardViewProps {
   healthSection: HealthSectionPayload;
   onNavigate: (page: string) => void;
   onInspectPharmacy: (p: Pharmacy) => void;
+  onInspectProduct: (p: Product) => void;
   onApprovePharmacy: (id: number) => void;
   onApproveProduct: (id: number, status: ProductStatus) => void;
 }
@@ -49,24 +51,57 @@ export function AdminDashboardView({
   healthSection,
   onNavigate,
   onInspectPharmacy,
+  onInspectProduct,
   onApprovePharmacy,
   onApproveProduct,
 }: AdminDashboardViewProps) {
-  const totalPharmacies = data.pharmacies.length || 1;
-  const validatedPharmacies = data.pharmacies.filter(p => p.status === 'Validée').length;
-  const suspendedOrExpired = data.pharmacies.filter(p => ['Suspendue', 'Abonnement expiré'].includes(p.status)).length;
-  const refusedPharmacies = data.pharmacies.filter(p => p.status === 'Refusée').length;
+  const stats = useMemo(() => {
+    const totalPharmacies = data.pharmacies.length || 1;
+    const validatedPharmacies = data.pharmacies.filter(p => p.status === 'Validée').length;
+    const suspendedOrExpired = data.pharmacies.filter(p => ['Suspendue', 'Abonnement expiré'].includes(p.status)).length;
+    const refusedPharmacies = data.pharmacies.filter(p => p.status === 'Refusée').length;
 
-  const totalProducts = data.products.length || 1;
-  const publishedProducts = data.products.filter(p => p.status === 'Publié').length;
-  const correctionProducts = data.products.filter(p => p.status === 'À corriger').length;
-  const hiddenOrRefusedProducts = data.products.filter(p => ['Masqué', 'Suspendu', 'Refusé', 'Archivé'].includes(p.status)).length;
+    const totalProducts = data.products.length || 1;
+    const publishedProducts = data.products.filter(p => p.status === 'Publié').length;
+    const correctionProducts = data.products.filter(p => p.status === 'À corriger').length;
+    const hiddenOrRefusedProducts = data.products.filter(p => ['Masqué', 'Suspendu', 'Refusé', 'Archivé'].includes(p.status)).length;
 
-  const urgentTotal = pendingPharmacies.length + pendingProducts.length + pendingPaymentsCount + openReportsCount + openContactsCount;
+    const urgentTotal = pendingPharmacies.length + pendingProducts.length + pendingPaymentsCount + openReportsCount + openContactsCount;
 
-  const activeAlerts = healthSection.alerts.filter(a => a.active !== false).length;
-  const activeNews = healthSection.news.filter(n => n.active !== false).length;
-  const activeEmergency = healthSection.emergencyNumbers.filter(e => e.active !== false).length;
+    const activeAlerts = healthSection.alerts.filter(a => a.active !== false).length;
+    const activeNews = healthSection.news.filter(n => n.active !== false).length;
+    const activeEmergency = healthSection.emergencyNumbers.filter(e => e.active !== false).length;
+
+    return {
+      totalPharmacies,
+      validatedPharmacies,
+      suspendedOrExpired,
+      refusedPharmacies,
+      totalProducts,
+      publishedProducts,
+      correctionProducts,
+      hiddenOrRefusedProducts,
+      urgentTotal,
+      activeAlerts,
+      activeNews,
+      activeEmergency,
+    };
+  }, [data.pharmacies, data.products, pendingPharmacies.length, pendingProducts.length, pendingPaymentsCount, openReportsCount, openContactsCount, healthSection]);
+
+  const {
+    totalPharmacies,
+    validatedPharmacies,
+    suspendedOrExpired,
+    refusedPharmacies,
+    totalProducts,
+    publishedProducts,
+    correctionProducts,
+    hiddenOrRefusedProducts,
+    urgentTotal,
+    activeAlerts,
+    activeNews,
+    activeEmergency,
+  } = stats;
 
   return (
     <div className="pc-adm-dash">
@@ -133,7 +168,7 @@ export function AdminDashboardView({
         <button type="button" className="pc-adm-kpi-card" onClick={() => onNavigate('Abonnements')}>
           <div className="pc-adm-kpi-head">
             <span>Revenus abonnements</span>
-            <span className="pc-adm-kpi-icon gold"><ModernCreditCardPlanIcon size={19} /></span>
+            <span className="pc-adm-kpi-icon mint"><ModernCreditCardPlanIcon size={19} /></span>
           </div>
           <strong>{money(confirmedRevenue)}</strong>
           <div className="pc-adm-kpi-foot">
@@ -222,11 +257,17 @@ export function AdminDashboardView({
           <div className="pc-adm-queue-list">
             {pendingPharmacies.slice(0, 4).map(p => (
               <div className="pc-adm-queue-item" key={p.id}>
-                <span className="pc-adm-queue-icon"><ModernDigitalStoreIcon size={17} /></span>
-                <div className="pc-adm-queue-info">
-                  <b>{p.name}</b>
-                  <small>{p.city} · {p.license || 'Licence à vérifier'}</small>
-                </div>
+                <button
+                  type="button"
+                  className="pc-adm-queue-trigger"
+                  onClick={() => onInspectPharmacy(p)}
+                >
+                  <span className="pc-adm-queue-icon"><ModernDigitalStoreIcon size={17} /></span>
+                  <div className="pc-adm-queue-info">
+                    <b>{p.name}</b>
+                    <small>{p.city} · {p.license || 'Licence à vérifier'}</small>
+                  </div>
+                </button>
                 <Status>{p.status}</Status>
                 <div className="table-actions">
                   <ActionMenu
@@ -261,19 +302,26 @@ export function AdminDashboardView({
           <div className="pc-adm-queue-list">
             {pendingProducts.slice(0, 4).map(p => (
               <div className="pc-adm-queue-item" key={p.id}>
-                <span className="pc-adm-queue-icon"><ModernPackageBoxIcon size={17} /></span>
-                <div className="pc-adm-queue-info">
-                  <b>{p.name}</b>
-                  <small>
-                    {data.pharmacies.find(x => x.id === p.pharmacyId)?.name || 'Établissement'} · {p.category} · {money(p.price)}
-                  </small>
-                </div>
+                <button
+                  type="button"
+                  className="pc-adm-queue-trigger"
+                  onClick={() => onInspectProduct(p)}
+                >
+                  <span className="pc-adm-queue-icon"><ModernPackageBoxIcon size={17} /></span>
+                  <div className="pc-adm-queue-info">
+                    <b>{p.name}</b>
+                    <small>
+                      {data.pharmacies.find(x => x.id === p.pharmacyId)?.name || `Pharmacie #${p.pharmacyId}`} · {p.category} · {money(p.price)}
+                    </small>
+                  </div>
+                </button>
                 <div className="table-actions">
                   <ActionMenu
                     label={`Actions pour ${p.name}`}
                     items={[
+                      { key: 'inspect', label: 'Inspecter la fiche', icon: <Eye size={14} />, onClick: () => onInspectProduct(p) },
                       { key: 'approve', label: 'Approuver et publier', icon: <Check size={14} />, variant: 'success', onClick: () => onApproveProduct(p.id, 'Publié') },
-                      { key: 'review', label: 'Examiner dans le catalogue', icon: <Eye size={14} />, onClick: () => onNavigate('Validation produits') },
+                      { key: 'review', label: 'Ouvrir dans le catalogue', icon: <ArrowRight size={14} />, onClick: () => onNavigate('Validation produits') },
                     ]}
                   />
                 </div>

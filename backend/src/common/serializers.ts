@@ -28,10 +28,10 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
 }
 
 /** Format compatible avec le type `Pharmacy` du frontend (badgeIds, badgeAssignedAt, documents…). */
-export function serializePharmacy(p: PharmacyWithBadges, opts: { includePrivate?: boolean; productsCount?: number } = {}) {
+export function serializePharmacy(p: PharmacyWithBadges, opts: { includePrivate?: boolean; includeHiddenBadges?: boolean; productsCount?: number } = {}) {
   const links = p.badges ?? [];
-  const activeLinks = links.filter(l => isBadgeActive(l.badge, l.assignedAt));
-  const exposedLinks = opts.includePrivate ? links : activeLinks.filter(l => l.badge.visible);
+  const activeLinks = links.filter(l => l.badge.visible && isBadgeActive(l.badge, l.assignedAt));
+  const exposedLinks = opts.includeHiddenBadges ? links : activeLinks;
   const base = {
     id: p.id,
     name: p.name,
@@ -47,7 +47,7 @@ export function serializePharmacy(p: PharmacyWithBadges, opts: { includePrivate?
     status: p.status,
     coverImage: p.coverImage ?? undefined,
     badgeIds: exposedLinks.map(l => l.badgeId),
-    badges: activeLinks.filter(l => l.badge.visible).map(l => serializeBadge(l.badge)),
+    badges: activeLinks.map(l => serializeBadge(l.badge)),
     badgeAssignedAt: Object.fromEntries(exposedLinks.map(l => [String(l.badgeId), l.assignedAt.toISOString()])),
     products: opts.productsCount ?? 0,
     updated: p.updatedAt.toISOString(),

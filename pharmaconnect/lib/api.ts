@@ -678,8 +678,8 @@ export const apiAdminUpdatePlan = (
   payload: { monthly: number; quarterly: number; yearly: number; description: string; features: string[] },
 ) => apiRequest(`/api/admin/plans/${encodeURIComponent(name)}`, 'PATCH', payload, 'Impossible de mettre à jour la formule.');
 
-export const apiAdminUpdateReportStatus = (reportId: number, status: string) =>
-  apiRequest(`/api/admin/reports/${reportId}/status`, 'PATCH', { status }, 'Impossible de mettre à jour le signalement.');
+export const apiAdminUpdateReportStatus = (reportId: number, status: string, adminNote?: string) =>
+  apiRequest(`/api/admin/reports/${reportId}/status`, 'PATCH', { status, ...(adminNote ? { adminNote } : {}) }, 'Impossible de mettre à jour le signalement.');
 
 export interface AdminUserItem {
   id: number;

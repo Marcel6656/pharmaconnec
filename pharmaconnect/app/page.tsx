@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
 import {
   AppData, PharmacyPreferences, Pharmacy,
-  Product, ProductStatus, distanceKm, isPharmacyActiveAndValid, isProductFresh, isStrongPassword,
+  Product, distanceKm, isPharmacyActiveAndValid, isProductFresh, isStrongPassword,
   officialCategories, PASSWORD_POLICY_ERROR, seed
 } from '@/lib/shared';
 
@@ -145,7 +145,7 @@ export default function Home() {
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [geo, setGeo] = useState('');
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [adminTab, setAdminTab] = useState('Tous');
+  const [productStatusFilter, setProductStatusFilter] = useState('Tous');
   const [visitorAccount, setVisitorAccount] = useState<{ name: string; email: string; phone?: string; password?: string; provider?: 'email' | 'Google' }>({ name: '', email: '', phone: '', password: '' });
   const [visitorLoggedIn, setVisitorLoggedIn] = useState(false);
   const [favoritePharmacyIds, setFavoritePharmacyIds] = useState<number[]>([]);
@@ -208,7 +208,7 @@ export default function Home() {
     }
   }
 
-  const handlePharmacyLogout = async () => {
+  const handlePharmacyLogout = async (customNotice?: string) => {
     clearAuthToken();
     setPrivateSnapshot(null);
     setModal(null);
@@ -226,7 +226,7 @@ export default function Home() {
     setSpace('public');
     setPage('Accueil');
     await refreshStateFromBackend();
-    say('Session pharmacie déconnectée.');
+    say(customNotice || 'Session pharmacie déconnectée.');
   };
 
   const handleVisitorLogout = async () => {
@@ -492,7 +492,6 @@ export default function Home() {
   const myProducts = data.products.filter(p => p.pharmacyId === pharmacyId);
   const unreadMessages = data.messages.filter(m => m.pharmacyId === pharmacyId && m.direction === 'visitor' && !m.read).length;
   const unreadNotices = data.notices.filter(n => !n.read && n.pharmacyId === pharmacyId).length;
-  const unread = unreadMessages + unreadNotices;
 
   function resetProductForm(p?: Product) {
     setEditingProduct(p || null);
@@ -517,7 +516,7 @@ export default function Home() {
       price: String(p.price),
       stock: String(p.stock),
       description: p.description,
-      imageDataUrl: p.imageDataUrl || '',
+      imageDataUrl: p.imageDataUrl?.startsWith('/uploads/public/') ? '' : (p.imageDataUrl || ''),
     });
     setModal('product');
   }
@@ -577,7 +576,7 @@ export default function Home() {
     return mutate(`/api/products/${id}/stock`, 'PATCH', { price, stock }, 'Stock et prix actualisés.');
   }
 
-  function productStatus(id: number, status: ProductStatus) {
+  function productStatus(id: number, status: 'Brouillon' | 'En attente' | 'Masqué' | 'Archivé') {
     return mutate(`/api/products/${id}/status`, 'PATCH', { status }, `Statut mis à jour : ${status}`);
   }
 
@@ -745,6 +744,10 @@ export default function Home() {
   }
 
   async function changePlan(plan: AppData['plans'][number]) {
+    if (pharmacyLoggedIn && currentOwned && !['Validée', 'Abonnement expiré'].includes(currentOwned.status)) {
+      say('Votre dossier pharmacie doit être validé avant de souscrire un abonnement payant.');
+      return;
+    }
     const config = await apiRequest<{ mode: string; operators: string[] }>('/api/payments/config', 'GET');
     const operators =
       config.ok && config.data?.operators?.length
@@ -845,44 +848,44 @@ export default function Home() {
       <a href="#main-content" className="skip-to-content">
         {lang === 'en' ? 'Skip to main content' : 'Aller au contenu principal'}
       </a>
-      <Header
-        space={space}
-        page={page}
-        mobileNavOpen={mobileNavOpen}
-        setMobileNavOpen={setMobileNavOpen}
-        openSpace={openSpace}
-        go={go}
-        pharmacyLoggedIn={pharmacyLoggedIn}
-        visitorLoggedIn={visitorLoggedIn}
-        setModal={setModal}
-        setPharmacyLoginError={setPharmacyLoginError}
-        setPharmacyLoginForm={setPharmacyLoginForm}
-        visitorAccount={visitorAccount}
-        currentLang={lang}
-        onLanguageChange={handleLanguageChange}
-        pharmacies={publicPharmacies}
-        onSelectCategory={(cat) => { setCategoryFilter(cat); setAvailabilityFilter('Toutes'); go('Produits'); }}
-        onSelectAvailability={(avail) => { setCategoryFilter('Toutes les catégories'); setAvailabilityFilter(avail); go('Produits'); }}
-        onSelectPharmacy={(id) => { setSelectedPharmacy(id); go('Fiche pharmacie'); }}
-        onTriggerGeo={() => { startGeo(); go('Pharmacies'); }}
-        onOpenHealthSubPage={(sub) => { setHealthSubPage(sub); go('Rubrique Santé'); }}
-        onOpenPharmacyPage={(subPage) => {
-          if (pharmacyLoggedIn) {
-            setSpace('pharmacy');
-            go(subPage);
-            return;
-          }
-          setPendingPharmacyPage(subPage);
-          setPharmacyLoginError('');
-          setPharmacyLoginForm({ email: '', password: '' });
-          setModal('account');
-        }}
-        onLogoutPharmacy={handlePharmacyLogout}
-        onLogoutVisitor={handleVisitorLogout}
-      />
-
       {space === 'public' || !pharmacyLoggedIn ? (
-        <main id="main-content" className="public-main">
+        <>
+          <Header
+            space={space}
+            page={page}
+            mobileNavOpen={mobileNavOpen}
+            setMobileNavOpen={setMobileNavOpen}
+            openSpace={openSpace}
+            go={go}
+            pharmacyLoggedIn={pharmacyLoggedIn}
+            visitorLoggedIn={visitorLoggedIn}
+            setModal={setModal}
+            setPharmacyLoginError={setPharmacyLoginError}
+            setPharmacyLoginForm={setPharmacyLoginForm}
+            visitorAccount={visitorAccount}
+            currentLang={lang}
+            onLanguageChange={handleLanguageChange}
+            pharmacies={publicPharmacies}
+            onSelectCategory={(cat) => { setCategoryFilter(cat); setAvailabilityFilter('Toutes'); go('Produits'); }}
+            onSelectAvailability={(avail) => { setCategoryFilter('Toutes les catégories'); setAvailabilityFilter(avail); go('Produits'); }}
+            onSelectPharmacy={(id) => { setSelectedPharmacy(id); go('Fiche pharmacie'); }}
+            onTriggerGeo={() => { startGeo(); go('Pharmacies'); }}
+            onOpenHealthSubPage={(sub) => { setHealthSubPage(sub); go('Rubrique Santé'); }}
+            onOpenPharmacyPage={(subPage) => {
+              if (pharmacyLoggedIn) {
+                setSpace('pharmacy');
+                go(subPage);
+                return;
+              }
+              setPendingPharmacyPage(subPage);
+              setPharmacyLoginError('');
+              setPharmacyLoginForm({ email: '', password: '' });
+              setModal('account');
+            }}
+            onLogoutPharmacy={handlePharmacyLogout}
+            onLogoutVisitor={handleVisitorLogout}
+          />
+          <main id="main-content" className="public-main">
           {notice && (
             <div className="toast">
               <CheckCircle2 size={17} />{notice}
@@ -1005,11 +1008,12 @@ export default function Home() {
             <Footer go={go} currentLang={lang} onOpenCookieSettings={() => setCookieBannerOpen(true)} />
           </PageTransitionStage>
         </main>
+        </>
       ) : (
-        <div className="workspace">
+        <div className="workspace pc-pharmacy-shell">
           <PharmacySidebar
             page={page}
-            unread={unreadMessages}
+            unreadMessages={unreadMessages}
             unreadNotices={unreadNotices}
             pharmacyId={pharmacyId}
             setSelectedPharmacyId={setSelectedPharmacyId}
@@ -1017,7 +1021,6 @@ export default function Home() {
             activePharmacy={activePharmacy}
             openSpace={openSpace}
             go={go}
-            say={say}
             setExistingAccountRegistration={setExistingAccountRegistration}
             setPharmacyForm={setPharmacyForm}
             setModal={setModal}
@@ -1033,9 +1036,11 @@ export default function Home() {
           <div className="workspace-main">
             <PharmacyTopbar
               page={page}
-              unread={unreadNotices}
+              unreadNotices={unreadNotices}
               activePharmacy={activePharmacy}
+              canOperatePharmacy={canOperatePharmacy(currentOwned)}
               go={go}
+              resetProductForm={resetProductForm}
               setProfileForm={setProfileForm}
               setModal={setModal}
             />
@@ -1063,8 +1068,8 @@ export default function Home() {
                   myProducts={myProducts}
                   categories={categories}
                   customCategories={customCategories}
-                  adminTab={adminTab}
-                  setAdminTab={setAdminTab}
+                  productStatusFilter={productStatusFilter}
+                  setProductStatusFilter={setProductStatusFilter}
                   query={query}
                   setQuery={setQuery}
                   categoryFilter={categoryFilter}

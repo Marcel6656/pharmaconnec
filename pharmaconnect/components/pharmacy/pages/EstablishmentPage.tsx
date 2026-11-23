@@ -2,7 +2,7 @@
 
 import { AuthenticatedImage } from '@/components/shared/AuthenticatedImage';
 import { ActionMenu } from '@/components/shared/ActionMenu';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   apiDeletePharmacyDocument,
   apiListPharmacyDocuments,
@@ -10,8 +10,8 @@ import {
   apiUploadPharmacyDocuments,
   PharmacyDocumentItem,
 } from '@/lib/api';
-import { Check, Clock3, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { Pharmacy, SectionTitle, Status } from '@/lib/shared';
+import { Check, Clock3, FileBadge2, ImagePlus, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Badge, BadgeGlyph, Empty, Pharmacy, SectionTitle, Status, activeBadges } from '@/lib/shared';
 import {
   ModernDigitalStoreIcon,
   ModernMailEnvelopeIcon,
@@ -23,6 +23,8 @@ import { SanteProcheWaveRibbon } from '@/components/shared/SanteProcheIllustrati
 
 interface EstablishmentPageProps {
   activePharmacy: Pharmacy;
+  badges?: Badge[];
+  canOperatePharmacy?: boolean;
   setExistingAccountRegistration: (v: boolean) => void;
   setPharmacyForm: (f: any) => void;
   setProfileForm: (f: any) => void;
@@ -33,6 +35,8 @@ interface EstablishmentPageProps {
 
 export function EstablishmentPage({
   activePharmacy,
+  badges = [],
+  canOperatePharmacy = true,
   setExistingAccountRegistration,
   setPharmacyForm,
   setProfileForm,
@@ -46,6 +50,11 @@ export function EstablishmentPage({
   const [coverBusy, setCoverBusy] = useState(false);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
 
+  const pharmacyBadges = useMemo(
+    () => activeBadges(activePharmacy, badges),
+    [activePharmacy, badges]
+  );
+
   const loadDocuments = useCallback(async () => {
     const list = await apiListPharmacyDocuments(activePharmacy.id);
     setDocs(list);
@@ -56,6 +65,7 @@ export function EstablishmentPage({
   }, [loadDocuments]);
 
   const openEditProfile = () => {
+    if (!canOperatePharmacy) return;
     setProfileForm({
       name: activePharmacy.name,
       city: activePharmacy.city,
@@ -80,7 +90,7 @@ export function EstablishmentPage({
   };
 
   const handleCoverUpload = async (file?: File) => {
-    if (!file) return;
+    if (!file || !canOperatePharmacy) return;
     setCoverBusy(true);
     try {
       const res = await apiUploadPharmacyCover(activePharmacy.id, file);
@@ -95,6 +105,9 @@ export function EstablishmentPage({
       if (coverInputRef.current) coverInputRef.current.value = '';
     }
   };
+
+  const docsLockedByValidation = activePharmacy.status === 'Validée';
+  const docsLocked = docsLockedByValidation || !canOperatePharmacy;
 
   return (
     <>
@@ -112,7 +125,13 @@ export function EstablishmentPage({
         icon={<ModernDigitalStoreIcon size={24} />}
         action={
           <div className="action-pair" style={{ alignItems: 'center' }}>
-            <button className="primary-btn" onClick={openEditProfile}>
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={!canOperatePharmacy}
+              title={canOperatePharmacy ? 'Modifier les coordonnées de la pharmacie' : 'Édition verrouillée pour le statut actuel'}
+              onClick={openEditProfile}
+            >
               <Pencil size={15} /> Modifier le profil
             </button>
             <ActionMenu
@@ -122,12 +141,12 @@ export function EstablishmentPage({
                   key: 'cover',
                   label: coverBusy ? 'Envoi de la photo…' : 'Changer la photo de couverture',
                   icon: <ImagePlus size={14} />,
-                  disabled: coverBusy,
+                  disabled: coverBusy || !canOperatePharmacy,
                   onClick: () => coverInputRef.current?.click(),
                 },
                 {
                   key: 'add-establishment',
-                  label: 'Ajouter un établissement',
+                  label: 'Ajouter un établissement à votre compte',
                   icon: <Plus size={14} />,
                   onClick: openAddEstablishment,
                 },
@@ -136,6 +155,7 @@ export function EstablishmentPage({
           </div>
         }
       />
+
       <div className="sp-profile-wave-banner">
         <div className="sp-profile-wave-avatar">
           <AuthenticatedImage src={activePharmacy.coverImage || '/images/hero-pharmacist.jpg'} alt={activePharmacy.name} />
@@ -147,16 +167,47 @@ export function EstablishmentPage({
         </div>
         <SanteProcheWaveRibbon variant="emerald" className="sp-banner-wave" />
       </div>
+
       <div className="two-panels">
         <section className="panel cg-modern-panel detail-panel">
-          <div className="profile-avatar"><ModernDigitalStoreIcon size={28} /></div>
-          <h2>{activePharmacy.name}</h2>
-          <Status>{activePharmacy.status}</Status>
+          <div className="pc-detail-header">
+            <h3>Informations publiques</h3>
+            <Status>{activePharmacy.status}</Status>
+          </div>
           <p><ModernRadarPinIcon size={16} />{activePharmacy.address}, {activePharmacy.city} · {activePharmacy.area}</p>
           <p><ModernPhoneCallIcon size={16} />{activePharmacy.phone}</p>
-          <p><ModernMailEnvelopeIcon size={16} />{activePharmacy.email}</p>
+          <p><ModernMailEnvelopeIcon size={16} />{activePharmacy.email || 'E-mail non renseigné'}</p>
           <p><ModernUserBadgeIcon size={16} />{activePharmacy.responsible}</p>
+          <p><FileBadge2 size={16} />Autorisation : {activePharmacy.license}</p>
+          <p><Clock3 size={16} />Horaires : {activePharmacy.openingHours || 'Non renseignés'}</p>
+          <p>
+            <MapPin size={16} />
+            GPS :{' '}
+            {activePharmacy.lat !== undefined && activePharmacy.lng !== undefined
+              ? `${activePharmacy.lat.toFixed(4)}, ${activePharmacy.lng.toFixed(4)}`
+              : 'Coordonnées non renseignées'}
+          </p>
+
+          {pharmacyBadges.length > 0 && (
+            <div className="pc-establishment-badges-block">
+              <small>Badges officiels attribués</small>
+              <div className="pc-establishment-badges">
+                {pharmacyBadges.map(b => (
+                  <span key={b.id} className={`badge-label ${b.color}`}>
+                    <BadgeGlyph icon={b.icon} size={14} /> {b.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="pc-add-establishment-row">
+            <button type="button" className="outline-btn" onClick={openAddEstablishment}>
+              <Plus size={14} /> Ajouter un établissement à votre compte
+            </button>
+          </div>
         </section>
+
         <section className="panel cg-modern-panel">
           <h3>Vérification administrative</h3>
           <form onSubmit={async event => {
@@ -184,11 +235,20 @@ export function EstablishmentPage({
             <label className="form-field">Ajouter des justificatifs (PDF, PNG ou JPEG)
               <input name="files" type="file" accept="application/pdf,image/png,image/jpeg" multiple required disabled={uploading} />
             </label>
-            <button className="outline-btn" disabled={uploading}>{uploading ? 'Envoi en cours…' : 'Envoyer les justificatifs'}</button>
+            <button type="submit" className="outline-btn" disabled={uploading}>
+              {uploading ? 'Envoi en cours…' : 'Envoyer les justificatifs'}
+            </button>
             {uploadState && <p role="status">{uploadState}</p>}
           </form>
 
-          {docs.length > 0 && (
+          {docs.length === 0 ? (
+            <div className="pc-doc-empty-wrap">
+              <Empty
+                title="Aucun justificatif déposé"
+                detail="Téléversez votre autorisation d’ouverture et vos pièces justificatives au format PDF, PNG ou JPEG."
+              />
+            </div>
+          ) : (
             <div className="pc-doc-list">
               {docs.map(doc => (
                 <div key={doc.id} className="pc-doc-row">
@@ -196,28 +256,34 @@ export function EstablishmentPage({
                     <b>{doc.fileName}</b>
                     <small>{Math.max(1, Math.round(doc.size / 1024))} Ko · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</small>
                   </div>
-                  <ActionMenu
-                    label={`Actions pour ${doc.fileName}`}
-                    items={[
-                      {
-                        key: 'delete-doc',
-                        label: 'Supprimer le justificatif',
-                        icon: <Trash2 size={14} />,
-                        variant: 'danger',
-                        onClick: async () => {
-                          if (!window.confirm(`Supprimer le justificatif « ${doc.fileName} » ?`)) return;
-                          const res = await apiDeletePharmacyDocument(activePharmacy.id, doc.id);
-                          if (!res.ok) {
-                            say?.(res.error);
-                            return;
-                          }
-                          await loadDocuments();
-                          await onDocumentsUploaded();
-                          say?.('Justificatif supprimé.');
+                  {docsLocked ? (
+                    <span className="pc-doc-locked-note">
+                      {docsLockedByValidation ? 'Archive légale verrouillée après validation' : 'Modification verrouillée selon le statut'}
+                    </span>
+                  ) : (
+                    <ActionMenu
+                      label={`Actions pour ${doc.fileName}`}
+                      items={[
+                        {
+                          key: 'delete-doc',
+                          label: 'Supprimer le justificatif',
+                          icon: <Trash2 size={14} />,
+                          variant: 'danger',
+                          onClick: async () => {
+                            if (!window.confirm(`Supprimer le justificatif « ${doc.fileName} » ?`)) return;
+                            const res = await apiDeletePharmacyDocument(activePharmacy.id, doc.id);
+                            if (!res.ok) {
+                              say?.(res.error);
+                              return;
+                            }
+                            await loadDocuments();
+                            await onDocumentsUploaded();
+                            say?.('Justificatif supprimé.');
+                          },
                         },
-                      },
-                    ]}
-                  />
+                      ]}
+                    />
+                  )}
                 </div>
               ))}
             </div>

@@ -115,6 +115,9 @@ export class ProductsService {
     const created = await this.prisma.serializable(async tx => {
       const pharmacy = await this.core.assertPharmacyAccess(user, pharmacyId, tx);
       if (!isAdmin) {
+        if (dto.status !== undefined && !PHARMACY_PRODUCT_STATUSES.includes(dto.status)) {
+          throw new ForbiddenException('Ce statut de publication est réservé à l’administration.');
+        }
         this.core.assertPharmacyOperational(pharmacy);
         await this.core.assertProductQuota(pharmacy, tx);
       }
@@ -148,6 +151,9 @@ export class ProductsService {
     const updated = await this.prisma.serializable(async tx => {
       const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
       if (!isAdmin) {
+        if (dto.status !== undefined && !PHARMACY_PRODUCT_STATUSES.includes(dto.status)) {
+          throw new ForbiddenException('Ce statut de publication est réservé à l’administration.');
+        }
         this.core.assertPharmacyOperational(pharmacy);
       }
       if (dto.imageDataUrl !== undefined && dto.imageDataUrl !== existing.imageUrl
@@ -158,7 +164,7 @@ export class ProductsService {
       if (dto.name != null && dto.name.trim().length < 2) throw new BadRequestException('Nom du produit requis.');
 
       if (!isAdmin && (existing.status === 'Refusé' || existing.status === 'Suspendu')) {
-        throw new ForbiddenException(`Ce produit est au statut « ${existing.status} ». Utilisez l’action d’archivage dédiée.`);
+        throw new ForbiddenException('Un produit refusé ou suspendu ne peut être débloqué que par l’administration.');
       }
 
       const coreFieldsModified =
@@ -218,9 +224,12 @@ export class ProductsService {
   }
 
   async updateStock(user: AuthUser, id: number, dto: UpdateStockDto) {
+    const isAdmin = user.role === 'ADMIN';
     const updated = await this.prisma.serializable(async tx => {
       const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
-      this.core.assertPharmacyOperational(pharmacy);
+      if (!isAdmin) {
+        this.core.assertPharmacyOperational(pharmacy);
+      }
       this.assertStockEditable(existing.status);
       const changed = dto.price !== existing.price || dto.stock !== existing.stock;
       return tx.product.update({
@@ -255,6 +264,9 @@ export class ProductsService {
     const updated = await this.prisma.serializable(async tx => {
       const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
       if (!isAdmin) {
+        if (existing.status === 'Refusé' || existing.status === 'Suspendu') {
+          throw new ForbiddenException('Un produit refusé ou suspendu ne peut être débloqué que par l’administration.');
+        }
         const expiry = pharmacy.subscriptionEndsAt ?? pharmacy.trialEndsAt;
         const archivingForRenewal = dto.status === 'Archivé' && ['Validée', 'Abonnement expiré'].includes(pharmacy.status)
           && Boolean(expiry && expiry.getTime() <= Date.now());
@@ -262,16 +274,13 @@ export class ProductsService {
         if (!PHARMACY_PRODUCT_STATUSES.includes(dto.status)) {
           throw new ForbiddenException('Seule l’administration peut approuver ou suspendre un produit.');
         }
-        if (['Refusé', 'Suspendu'].includes(existing.status) && dto.status !== 'Archivé') {
-          throw new ForbiddenException(`Un produit au statut « ${existing.status} » ne peut être basculé qu’en « Archivé ».`);
-        }
       } else {
         if (['À corriger', 'Refusé'].includes(dto.status) && !note) {
           throw new BadRequestException('Renseignez le motif de la décision.');
         }
         if (dto.status === 'Publié') {
           this.core.assertPharmacyOperational(pharmacy, true);
-          if (!['En attente', 'Masqué', 'Suspendu', 'Publié'].includes(existing.status)) {
+          if (!['En attente', 'À corriger', 'Refusé', 'Masqué', 'Suspendu', 'Publié'].includes(existing.status)) {
             throw new ConflictException('Le produit doit être soumis à la modération avant sa publication.');
           }
           if (!dto.expectedModifiedAt) throw new BadRequestException('La version examinée du produit est requise.');
@@ -320,19 +329,26 @@ export class ProductsService {
 
   async setImage(user: AuthUser, id: number, file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Fichier image requis (champ « file »).');
+    const isAdmin = user.role === 'ADMIN';
     try {
       assertSafeUploadedFiles([file], IMAGE_TYPES);
       const updated = await this.prisma.serializable(async tx => {
         const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
-        this.core.assertPharmacyOperational(pharmacy);
+        if (!isAdmin) {
+          this.core.assertPharmacyOperational(pharmacy);
+        }
         this.assertStockEditable(existing.status);
-        const nextStatus = existing.status === 'Publié' ? 'En attente' : existing.status;
+        const resetToPending = !isAdmin && existing.status === 'Publié';
+        const nextStatus = resetToPending ? 'En attente' : existing.status;
         const product = await tx.product.update({
           where: { id },
-          data: { imageUrl: publicUrl(file.filename), status: nextStatus, note: nextStatus === 'En attente' ? null : undefined },
+          data: { imageUrl: publicUrl(file.filename), status: nextStatus, note: resetToPending ? null : undefined },
           include: historyInclude,
         });
-        await this.core.audit(user, 'Image produit mise à jour', 'Produit', id, tx);
+        const auditAction = resetToPending
+          ? 'Image produit mise à jour (repassé en attente de validation)'
+          : 'Image produit mise à jour';
+        await this.core.audit(user, auditAction, 'Produit', id, tx);
         return product;
       });
       return serializeProduct(updated);
@@ -343,8 +359,11 @@ export class ProductsService {
   }
 
   async remove(user: AuthUser, id: number) {
-    const { pharmacy } = await this.findAndAuthorize(user, id);
+    const { product: existing, pharmacy } = await this.findAndAuthorize(user, id);
     if (user.role !== 'ADMIN') {
+      if (existing.status === 'Refusé' || existing.status === 'Suspendu') {
+        throw new ForbiddenException('Un produit refusé ou suspendu ne peut pas être supprimé par l’officine.');
+      }
       this.core.assertPharmacyOperational(pharmacy);
     }
     await this.prisma.product.delete({ where: { id } });

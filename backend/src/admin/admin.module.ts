@@ -100,6 +100,7 @@ export class AdminPaymentStatusDto {
 
 export class AdminReportStatusDto {
   @ApiProperty({ enum: REPORT_STATUSES }) @IsIn(REPORT_STATUSES) status: (typeof REPORT_STATUSES)[number];
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) adminNote?: string;
 }
 
 export class AdminContactUpdateDto {
@@ -194,7 +195,7 @@ export class AdminService {
       orderBy: { id: 'asc' },
     });
     return rows.map(p => ({
-      ...serializePharmacy(p, { includePrivate: true, productsCount: p._count.products }),
+      ...serializePharmacy(p, { includePrivate: true, includeHiddenBadges: true, productsCount: p._count.products }),
       uploadedDocuments: p.documents,
     }));
   }
@@ -211,6 +212,9 @@ export class AdminService {
       if (ownerId != null) {
         const owner = await tx.user.findUnique({ where: { id: ownerId } });
         if (!owner) throw new NotFoundException('Compte propriétaire introuvable.');
+        if (owner.role !== 'PHARMACIST') {
+          throw new BadRequestException('Le compte propriétaire doit avoir le rôle PHARMACIST.');
+        }
       } else {
         const matched = await tx.user.findUnique({ where: { email: cleanEmail } });
         if (matched && matched.role === 'PHARMACIST') ownerId = matched.id;
@@ -242,7 +246,7 @@ export class AdminService {
     });
     await this.core.audit(user, `Officine créée : ${created.name}`, 'Pharmacie', created.id);
     return {
-      ...serializePharmacy(created, { includePrivate: true, productsCount: created._count.products }),
+      ...serializePharmacy(created, { includePrivate: true, includeHiddenBadges: true, productsCount: created._count.products }),
       uploadedDocuments: created.documents,
     };
   }
@@ -314,7 +318,7 @@ export class AdminService {
       where: { id },
       include: { badges: { include: { badge: true } }, _count: { select: { products: true } } },
     });
-    return serializePharmacy(updated, { includePrivate: true, productsCount: updated._count.products });
+    return serializePharmacy(updated, { includePrivate: true, includeHiddenBadges: true, productsCount: updated._count.products });
   }
 
   async downloadDocument(user: AuthUser, docId: number, res: Response) {
@@ -499,7 +503,7 @@ export class AdminService {
       where: { id: pharmacyId },
       include: { badges: { include: { badge: true } }, _count: { select: { products: true } } },
     });
-    return serializePharmacy(updated, { includePrivate: true, productsCount: updated._count.products });
+    return serializePharmacy(updated, { includePrivate: true, includeHiddenBadges: true, productsCount: updated._count.products });
   }
 
   // --- Formules & Paiements ---
@@ -541,12 +545,14 @@ export class AdminService {
     return this.prisma.report.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async updateReportStatus(user: AuthUser, id: number, status: string) {
+  async updateReportStatus(user: AuthUser, id: number, status: string, adminNote?: string) {
     const report = await this.prisma.report.findUnique({ where: { id } });
     if (!report) throw new NotFoundException('Signalement introuvable.');
     const updated = await this.prisma.report.update({ where: { id }, data: { status } });
-    await this.core.audit(user, `Signalement ${status.toLowerCase()}`, 'Signalement', id);
-    return updated;
+    const cleanNote = adminNote?.trim();
+    const auditLabel = cleanNote ? `Signalement ${status.toLowerCase()} · ${cleanNote}` : `Signalement ${status.toLowerCase()}`;
+    await this.core.audit(user, auditLabel, 'Signalement', id);
+    return { ...updated, ...(cleanNote ? { adminNote: cleanNote } : {}) };
   }
 
   async deleteReport(user: AuthUser, id: number) {
@@ -1085,7 +1091,7 @@ export class AdminController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AdminReportStatusDto,
   ) {
-    return this.svc.updateReportStatus(user, id, dto.status);
+    return this.svc.updateReportStatus(user, id, dto.status, dto.adminNote);
   }
 
   @Delete('reports/:id')

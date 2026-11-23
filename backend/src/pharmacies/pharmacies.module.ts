@@ -86,9 +86,9 @@ export class PharmaciesService {
     private readonly auth: AuthService,
   ) { }
 
-  private async full(id: number) {
+  private async full(id: number, includeHiddenBadges = false) {
     const p = await this.prisma.pharmacy.findUniqueOrThrow({ where: { id }, include });
-    return serializePharmacy(p, { includePrivate: true, productsCount: p._count.products });
+    return serializePharmacy(p, { includePrivate: true, includeHiddenBadges, productsCount: p._count.products });
   }
 
   async register(user: AuthUser | undefined, dto: RegisterPharmacyDto) {
@@ -172,7 +172,7 @@ export class PharmaciesService {
 
   async get(user: AuthUser, id: number) {
     await this.core.assertPharmacyAccess(user, id);
-    return this.full(id);
+    return this.full(id, user.role === 'ADMIN');
   }
 
   async update(user: AuthUser, id: number, dto: UpdatePharmacyDto) {
@@ -194,7 +194,7 @@ export class PharmaciesService {
       },
     });
     await this.core.audit(user, 'Profil établissement modifié', 'Pharmacie', id);
-    return this.full(id);
+    return this.full(id, user.role === 'ADMIN');
   }
 
   async setCover(user: AuthUser, id: number, file?: Express.Multer.File) {
@@ -203,7 +203,7 @@ export class PharmaciesService {
       assertSafeUploadedFiles([file], IMAGE_TYPES);
       await this.prisma.serializable(async tx => {
         const pharmacy = await this.core.assertPharmacyAccess(user, id, tx);
-        this.core.assertPharmacyOperational(pharmacy);
+        if (user.role !== 'ADMIN') this.core.assertPharmacyOperational(pharmacy);
         await tx.pharmacy.update({ where: { id }, data: { coverImage: publicUrl(file.filename) } });
         await this.core.audit(user, 'Image de couverture mise à jour', 'Pharmacie', id, tx);
       });
@@ -211,7 +211,7 @@ export class PharmaciesService {
       cleanupUploadedFiles([file]);
       throw err;
     }
-    return this.full(id);
+    return this.full(id, user.role === 'ADMIN');
   }
 
   async addDocuments(user: AuthUser, id: number, files: Express.Multer.File[] = []) {
@@ -254,6 +254,9 @@ export class PharmaciesService {
   async deleteDocument(user: AuthUser, id: number, docId: number) {
     const pharmacy = await this.core.assertPharmacyAccess(user, id);
     if (user.role !== 'ADMIN') {
+      if (pharmacy.status === 'Validée') {
+        throw new ForbiddenException('Les justificatifs d’une officine validée ne peuvent être supprimés que par l’administration.');
+      }
       this.core.assertPharmacyOperational(pharmacy);
     }
     const doc = await this.prisma.pharmacyDocument.findFirst({ where: { id: docId, pharmacyId: id } });
@@ -307,27 +310,31 @@ export class PharmaciesService {
   async removeCategory(user: AuthUser, id: number, name: string) {
     const pharmacy = await this.core.assertPharmacyAccess(user, id);
     this.core.assertPharmacyOperational(pharmacy);
-    const clean = name.trim();
+    const cleanName = name.trim();
     await this.prisma.serializable(async tx => {
-      if (await tx.product.count({ where: { pharmacyId: id, category: clean } })) {
+      const existing = await tx.customCategory.findFirst({ where: { pharmacyId: id, name: cleanName } });
+      if (!existing) throw new NotFoundException('Catégorie personnalisée introuvable.');
+      if (await tx.product.count({ where: { pharmacyId: id, category: cleanName } })) {
         throw new ConflictException('Réaffectez les produits de cette catégorie avant de la supprimer.');
       }
-      await tx.customCategory.deleteMany({ where: { pharmacyId: id, name: clean } });
+      await tx.customCategory.delete({ where: { id: existing.id } });
     });
-    await this.core.audit(user, 'Catégorie personnalisée supprimée', 'Pharmacie', id);
+    await this.core.audit(user, `Catégorie personnalisée supprimée (${cleanName})`, 'Pharmacie', id);
     return this.categories(user, id);
   }
 
   async renameCategory(user: AuthUser, id: number, oldName: string, newName: string) {
     const pharmacy = await this.core.assertPharmacyAccess(user, id);
-    this.core.assertPharmacyOperational(pharmacy);
+    if (user.role !== 'ADMIN') {
+      this.core.assertPharmacyOperational(pharmacy);
+    }
     const cleanOld = oldName.trim();
     const cleanNew = newName.trim();
     if (cleanNew.length < 2) throw new BadRequestException('Nom de catégorie requis.');
-    await this.prisma.serializable(async tx => {
+    const resetCount = await this.prisma.serializable(async tx => {
       const existing = await tx.customCategory.findFirst({ where: { pharmacyId: id, name: cleanOld } });
       if (!existing) throw new NotFoundException('Catégorie personnalisée introuvable.');
-      if (cleanOld === cleanNew) return;
+      if (cleanOld === cleanNew) return 0;
       const [official, custom] = await Promise.all([
         tx.platformCategory.findMany({ select: { name: true } }),
         tx.customCategory.findMany({ where: { pharmacyId: id }, select: { name: true } }),
@@ -337,9 +344,24 @@ export class PharmaciesService {
       );
       if (collision) throw new ConflictException('Une catégorie porte déjà ce nom.');
       await tx.customCategory.update({ where: { id: existing.id }, data: { name: cleanNew } });
-      await tx.product.updateMany({ where: { pharmacyId: id, category: cleanOld }, data: { category: cleanNew } });
+      let pendingResetCount = 0;
+      if (user.role !== 'ADMIN') {
+        const res = await tx.product.updateMany({
+          where: { pharmacyId: id, category: cleanOld, status: 'Publié' },
+          data: { category: cleanNew, status: 'En attente', note: null },
+        });
+        pendingResetCount = res.count;
+      }
+      await tx.product.updateMany({
+        where: { pharmacyId: id, category: cleanOld },
+        data: { category: cleanNew },
+      });
+      return pendingResetCount;
     });
-    await this.core.audit(user, `Catégorie personnalisée renommée (${cleanOld} -> ${cleanNew})`, 'Pharmacie', id);
+    const auditLabel = resetCount > 0
+      ? `Catégorie personnalisée renommée (${cleanOld} -> ${cleanNew}, ${resetCount} produit(s) publié(s) repassé(s) en attente)`
+      : `Catégorie personnalisée renommée (${cleanOld} -> ${cleanNew})`;
+    await this.core.audit(user, auditLabel, 'Pharmacie', id);
     return this.categories(user, id);
   }
 

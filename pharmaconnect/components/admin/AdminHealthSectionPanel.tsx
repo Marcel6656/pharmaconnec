@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Eye, EyeOff, Newspaper, Pencil, Phone, Plus, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import {
   EmergencyNumberItem,
@@ -9,8 +9,9 @@ import {
   HealthSectionPayload,
 } from '@/lib/health-section';
 import { ActionMenu } from '@/components/shared/ActionMenu';
-import { Modal, SectionTitle, Status } from '@/lib/shared';
-import { ModernBellAlertIcon, ModernPhoneCallIcon } from '@/components/shared/ModernIcons';
+import { Empty, Modal, SectionTitle, Status } from '@/lib/shared';
+import { ModernBellAlertIcon, ModernPhoneCallIcon, ModernSearchMedicineIcon } from '@/components/shared/ModernIcons';
+import { ConfirmDangerModal } from '@/components/admin/ConfirmDangerModal';
 
 const VERIFIED_IMAGE_OPTIONS = [
   { label: 'Médicaments & flacons stériles (Studio)', value: '/images/hero-cinema-medicines.jpg' },
@@ -26,26 +27,59 @@ const VERIFIED_IMAGE_OPTIONS = [
 interface AdminHealthSectionPanelProps {
   section: HealthSectionPayload;
   saving: boolean;
-  onSave: (next: HealthSectionPayload) => Promise<void>;
+  onSave: (next: HealthSectionPayload) => Promise<boolean>;
+  subNav?: React.ReactNode;
 }
 
 export function AdminHealthSectionPanel({
   section,
   saving,
   onSave,
+  subNav,
 }: AdminHealthSectionPanelProps) {
   const [tab, setTab] = useState<'alerts' | 'news' | 'emergency'>('alerts');
+  const [query, setQuery] = useState('');
   const [editingAlert, setEditingAlert] = useState<HealthAlertItem | null>(null);
   const [editingNews, setEditingNews] = useState<HealthNewsItem | null>(null);
   const [editingEmergency, setEditingEmergency] = useState<EmergencyNumberItem | null>(null);
+  const [modalError, setModalError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    title: string;
+    message: string;
+    patch: Partial<HealthSectionPayload>;
+  } | null>(null);
 
-  const commit = async (patch: Partial<HealthSectionPayload>) => {
-    await onSave({
+  const commit = async (patch: Partial<HealthSectionPayload>): Promise<boolean> => {
+    return onSave({
       alerts: patch.alerts ?? section.alerts,
       news: patch.news ?? section.news,
       emergencyNumbers: patch.emergencyNumbers ?? section.emergencyNumbers,
     });
   };
+
+  const filteredAlerts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return section.alerts;
+    return section.alerts.filter(a =>
+      `${a.titleFr} ${a.summaryFr} ${a.scopeFr} ${a.severity} ${a.dateFr}`.toLowerCase().includes(q),
+    );
+  }, [section.alerts, query]);
+
+  const filteredNews = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return section.news;
+    return section.news.filter(n =>
+      `${n.titleFr} ${n.excerptFr} ${n.tagFr} ${n.dateFr}`.toLowerCase().includes(q),
+    );
+  }, [section.news, query]);
+
+  const filteredEmergency = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return section.emergencyNumbers;
+    return section.emergencyNumbers.filter(e =>
+      `${e.number} ${e.titleFr} ${e.serviceFr} ${e.descFr} ${e.badgeFr}`.toLowerCase().includes(q),
+    );
+  }, [section.emergencyNumbers, query]);
 
   return (
     <>
@@ -55,6 +89,19 @@ export function AdminHealthSectionPanel({
         desc="Publiez, illustrez ou masquez les alertes sanitaires, dossiers d’actualités et numéros d’urgence affichés sur le site public."
         icon={<ModernBellAlertIcon size={24} />}
       />
+
+      {subNav}
+
+      <div className="toolbar">
+        <label className="search-box">
+          <ModernSearchMedicineIcon size={17} />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Filtrer les alertes, actualités ou numéros d’urgence…"
+          />
+        </label>
+      </div>
 
       <div className="admin-filter-row">
         <button type="button" className={tab === 'alerts' ? 'active' : ''} onClick={() => setTab('alerts')}>
@@ -82,13 +129,14 @@ export function AdminHealthSectionPanel({
         <section className="panel cg-modern-panel">
           <div className="panel-heading">
             <div>
-              <h3>Bulletins & alertes sanitaires</h3>
+              <h3>Bulletins &amp; alertes sanitaires</h3>
               <p>Chaque alerte est illustrée d’un visuel et classée par niveau de vigilance.</p>
             </div>
             <button
               type="button"
               className="primary-btn"
-              onClick={() =>
+              onClick={() => {
+                setModalError('');
                 setEditingAlert({
                   id: `alert-${Date.now()}`,
                   severity: 'vigilance',
@@ -109,15 +157,15 @@ export function AdminHealthSectionPanel({
                   actionLabelFr: 'Voir les officines vérifiées',
                   actionLabelEn: 'View verified pharmacies',
                   targetPage: 'Pharmacies',
-                })
-              }
+                });
+              }}
             >
               <Plus size={14} /> Nouvelle alerte
             </button>
           </div>
 
           <div className="pc-admin-editorial-list">
-            {section.alerts.map(item => (
+            {filteredAlerts.map(item => (
               <div key={item.id} className="pc-admin-editorial-row">
                 <img src={item.image || '/images/hero-cinema-medicines.jpg'} alt="" className="pc-admin-editorial-thumb" />
                 <div className="pc-admin-editorial-info">
@@ -138,7 +186,7 @@ export function AdminHealthSectionPanel({
                         label: item.active !== false ? 'Masquer' : 'Publier',
                         icon: item.active !== false ? <EyeOff size={14} /> : <Eye size={14} />,
                         onClick: () =>
-                          commit({
+                          void commit({
                             alerts: section.alerts.map(a => (a.id === item.id ? { ...a, active: a.active === false } : a)),
                           }),
                       },
@@ -146,7 +194,10 @@ export function AdminHealthSectionPanel({
                         key: 'edit',
                         label: 'Modifier',
                         icon: <Pencil size={14} />,
-                        onClick: () => setEditingAlert({ ...item }),
+                        onClick: () => {
+                          setModalError('');
+                          setEditingAlert({ ...item });
+                        },
                       },
                       {
                         key: 'delete',
@@ -154,16 +205,24 @@ export function AdminHealthSectionPanel({
                         icon: <Trash2 size={14} />,
                         variant: 'danger',
                         dividerBefore: true,
-                        onClick: () => {
-                          if (!window.confirm(`Supprimer l’alerte « ${item.titleFr} » ?`)) return;
-                          commit({ alerts: section.alerts.filter(a => a.id !== item.id) });
-                        },
+                        onClick: () =>
+                          setDeleteConfirm({
+                            title: 'Supprimer l’alerte sanitaire',
+                            message: `Supprimer l’alerte « ${item.titleFr} » de la Rubrique Santé publique ?`,
+                            patch: { alerts: section.alerts.filter(a => a.id !== item.id) },
+                          }),
                       },
                     ]}
                   />
                 </div>
               </div>
             ))}
+            {filteredAlerts.length === 0 && (
+              <Empty
+                title="Aucune alerte sanitaire"
+                detail={query.trim() ? 'Aucune alerte ne correspond à votre recherche.' : 'Créez un premier bulletin sanitaire pour informer le public.'}
+              />
+            )}
           </div>
         </section>
       )}
@@ -172,13 +231,14 @@ export function AdminHealthSectionPanel({
         <section className="panel cg-modern-panel">
           <div className="panel-heading">
             <div>
-              <h3>Actualités de santé & dossiers pratiques</h3>
+              <h3>Actualités de santé &amp; dossiers pratiques</h3>
               <p>Articles illustrés avec points clés dépliables et lien vers le catalogue.</p>
             </div>
             <button
               type="button"
               className="primary-btn"
-              onClick={() =>
+              onClick={() => {
+                setModalError('');
                 setEditingNews({
                   id: `news-${Date.now()}`,
                   tagFr: 'Prévention',
@@ -197,15 +257,15 @@ export function AdminHealthSectionPanel({
                   keyPointsFr: [],
                   keyPointsEn: [],
                   targetCategory: 'Médicaments',
-                })
-              }
+                });
+              }}
             >
               <Plus size={14} /> Nouvel article
             </button>
           </div>
 
           <div className="pc-admin-editorial-list">
-            {section.news.map(item => (
+            {filteredNews.map(item => (
               <div key={item.id} className="pc-admin-editorial-row">
                 <img src={item.image || '/images/hero-smile.jpg'} alt="" className="pc-admin-editorial-thumb" />
                 <div className="pc-admin-editorial-info">
@@ -226,7 +286,7 @@ export function AdminHealthSectionPanel({
                         label: item.active !== false ? 'Masquer' : 'Publier',
                         icon: item.active !== false ? <EyeOff size={14} /> : <Eye size={14} />,
                         onClick: () =>
-                          commit({
+                          void commit({
                             news: section.news.map(n => (n.id === item.id ? { ...n, active: n.active === false } : n)),
                           }),
                       },
@@ -234,7 +294,10 @@ export function AdminHealthSectionPanel({
                         key: 'edit',
                         label: 'Modifier',
                         icon: <Pencil size={14} />,
-                        onClick: () => setEditingNews({ ...item }),
+                        onClick: () => {
+                          setModalError('');
+                          setEditingNews({ ...item });
+                        },
                       },
                       {
                         key: 'delete',
@@ -242,16 +305,24 @@ export function AdminHealthSectionPanel({
                         icon: <Trash2 size={14} />,
                         variant: 'danger',
                         dividerBefore: true,
-                        onClick: () => {
-                          if (!window.confirm(`Supprimer l’article « ${item.titleFr} » ?`)) return;
-                          commit({ news: section.news.filter(n => n.id !== item.id) });
-                        },
+                        onClick: () =>
+                          setDeleteConfirm({
+                            title: 'Supprimer l’article de santé',
+                            message: `Supprimer l’article « ${item.titleFr} » de la Rubrique Santé publique ?`,
+                            patch: { news: section.news.filter(n => n.id !== item.id) },
+                          }),
                       },
                     ]}
                   />
                 </div>
               </div>
             ))}
+            {filteredNews.length === 0 && (
+              <Empty
+                title="Aucune actualité de santé"
+                detail={query.trim() ? 'Aucun article ne correspond à votre recherche.' : 'Ajoutez un premier dossier pratique pour les visiteurs.'}
+              />
+            )}
           </div>
         </section>
       )}
@@ -260,13 +331,14 @@ export function AdminHealthSectionPanel({
         <section className="panel cg-modern-panel">
           <div className="panel-heading">
             <div>
-              <h3>Numéros d’urgence & « Numéros Verts »</h3>
+              <h3>Numéros d’urgence &amp; « Numéros Verts »</h3>
               <p>Lignes officielles gratuites et numéros hospitaliers affichés au public.</p>
             </div>
             <button
               type="button"
               className="primary-btn"
-              onClick={() =>
+              onClick={() => {
+                setModalError('');
                 setEditingEmergency({
                   id: `emergency-${Date.now()}`,
                   number: '',
@@ -284,15 +356,15 @@ export function AdminHealthSectionPanel({
                   descEn: '',
                   hoursFr: 'Ouvert 24h/24 · 7j/7',
                   hoursEn: 'Open 24/7',
-                })
-              }
+                });
+              }}
             >
               <Plus size={14} /> Nouveau numéro
             </button>
           </div>
 
           <div className="pc-admin-editorial-list">
-            {section.emergencyNumbers.map(item => (
+            {filteredEmergency.map(item => (
               <div key={item.id} className="pc-admin-editorial-row">
                 <div className="pc-admin-num-badge">
                   <ModernPhoneCallIcon size={18} />
@@ -316,7 +388,7 @@ export function AdminHealthSectionPanel({
                         label: item.active !== false ? 'Masquer' : 'Publier',
                         icon: item.active !== false ? <EyeOff size={14} /> : <Eye size={14} />,
                         onClick: () =>
-                          commit({
+                          void commit({
                             emergencyNumbers: section.emergencyNumbers.map(n =>
                               n.id === item.id ? { ...n, active: n.active === false } : n,
                             ),
@@ -326,7 +398,10 @@ export function AdminHealthSectionPanel({
                         key: 'edit',
                         label: 'Modifier',
                         icon: <Pencil size={14} />,
-                        onClick: () => setEditingEmergency({ ...item }),
+                        onClick: () => {
+                          setModalError('');
+                          setEditingEmergency({ ...item });
+                        },
                       },
                       {
                         key: 'delete',
@@ -334,25 +409,40 @@ export function AdminHealthSectionPanel({
                         icon: <Trash2 size={14} />,
                         variant: 'danger',
                         dividerBefore: true,
-                        onClick: () => {
-                          if (!window.confirm(`Supprimer le numéro « ${item.number} — ${item.titleFr} » ?`)) return;
-                          commit({ emergencyNumbers: section.emergencyNumbers.filter(n => n.id !== item.id) });
-                        },
+                        onClick: () =>
+                          setDeleteConfirm({
+                            title: 'Supprimer le numéro d’urgence',
+                            message: `Supprimer le numéro « ${item.number} — ${item.titleFr} » de la Rubrique Santé publique ?`,
+                            patch: { emergencyNumbers: section.emergencyNumbers.filter(n => n.id !== item.id) },
+                          }),
                       },
                     ]}
                   />
                 </div>
               </div>
             ))}
+            {filteredEmergency.length === 0 && (
+              <Empty
+                title="Aucun numéro d’urgence"
+                detail={query.trim() ? 'Aucun numéro ne correspond à votre recherche.' : 'Ajoutez un numéro vert ou une ligne d’urgence officielle.'}
+              />
+            )}
           </div>
         </section>
       )}
 
       {editingAlert && (
-        <Modal title="Éditer l’alerte sanitaire" icon={<ShieldAlert size={20} />} onClose={() => setEditingAlert(null)} wide>
+        <Modal
+          title="Éditer l’alerte sanitaire"
+          icon={<ShieldAlert size={20} />}
+          onClose={() => { if (!saving) setEditingAlert(null); }}
+          wide
+        >
           <form
             onSubmit={async e => {
               e.preventDefault();
+              if (saving) return;
+              setModalError('');
               const nextItem: HealthAlertItem = {
                 ...editingAlert,
                 titleEn: editingAlert.titleEn || editingAlert.titleFr,
@@ -367,14 +457,17 @@ export function AdminHealthSectionPanel({
               const alerts = exists
                 ? section.alerts.map(a => (a.id === nextItem.id ? nextItem : a))
                 : [nextItem, ...section.alerts];
-              setEditingAlert(null);
-              await commit({ alerts });
+              const ok = await commit({ alerts });
+              if (ok) setEditingAlert(null);
+              else setModalError('Impossible d’enregistrer l’alerte sanitaire. Veuillez réessayer.');
             }}
           >
+            {modalError && <div className="gm-error-alert" role="alert" style={{ marginBottom: 12 }}>{modalError}</div>}
             <div className="form-grid">
               <label>
                 Gravité
                 <select
+                  disabled={saving}
                   value={editingAlert.severity}
                   onChange={e => setEditingAlert({ ...editingAlert, severity: e.target.value as HealthAlertItem['severity'] })}
                 >
@@ -385,16 +478,16 @@ export function AdminHealthSectionPanel({
               </label>
               <label>
                 Thématique *
-                <input required value={editingAlert.scopeFr} onChange={e => setEditingAlert({ ...editingAlert, scopeFr: e.target.value })} />
+                <input required disabled={saving} value={editingAlert.scopeFr} onChange={e => setEditingAlert({ ...editingAlert, scopeFr: e.target.value })} />
               </label>
               <label>
                 Libellé date
-                <input value={editingAlert.dateFr} onChange={e => setEditingAlert({ ...editingAlert, dateFr: e.target.value })} />
+                <input disabled={saving} value={editingAlert.dateFr} onChange={e => setEditingAlert({ ...editingAlert, dateFr: e.target.value })} />
               </label>
             </div>
             <label className="form-field">
               Visuel de l’alerte
-              <select value={editingAlert.image} onChange={e => setEditingAlert({ ...editingAlert, image: e.target.value })}>
+              <select disabled={saving} value={editingAlert.image} onChange={e => setEditingAlert({ ...editingAlert, image: e.target.value })}>
                 {VERIFIED_IMAGE_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
@@ -402,29 +495,38 @@ export function AdminHealthSectionPanel({
             </label>
             <label className="form-field">
               Titre de l’alerte *
-              <input required value={editingAlert.titleFr} onChange={e => setEditingAlert({ ...editingAlert, titleFr: e.target.value })} />
+              <input required disabled={saving} value={editingAlert.titleFr} onChange={e => setEditingAlert({ ...editingAlert, titleFr: e.target.value })} />
             </label>
             <label className="form-field">
               Résumé sanitaire *
-              <textarea rows={2} required value={editingAlert.summaryFr} onChange={e => setEditingAlert({ ...editingAlert, summaryFr: e.target.value })} />
+              <textarea rows={2} required disabled={saving} value={editingAlert.summaryFr} onChange={e => setEditingAlert({ ...editingAlert, summaryFr: e.target.value })} />
             </label>
             <label className="form-field">
               Conduite à tenir / Conseil *
-              <textarea rows={2} required value={editingAlert.adviceFr} onChange={e => setEditingAlert({ ...editingAlert, adviceFr: e.target.value })} />
+              <textarea rows={2} required disabled={saving} value={editingAlert.adviceFr} onChange={e => setEditingAlert({ ...editingAlert, adviceFr: e.target.value })} />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setEditingAlert(null)}>Annuler</button>
-              <button type="submit" className="primary-btn" disabled={saving}><Save size={14} /> Enregistrer et publier</button>
+              <button type="button" className="outline-btn" disabled={saving} onClick={() => setEditingAlert(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={saving}>
+                <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer et publier'}
+              </button>
             </div>
           </form>
         </Modal>
       )}
 
       {editingNews && (
-        <Modal title="Éditer l’actualité de santé" icon={<Newspaper size={20} />} onClose={() => setEditingNews(null)} wide>
+        <Modal
+          title="Éditer l’actualité de santé"
+          icon={<Newspaper size={20} />}
+          onClose={() => { if (!saving) setEditingNews(null); }}
+          wide
+        >
           <form
             onSubmit={async e => {
               e.preventDefault();
+              if (saving) return;
+              setModalError('');
               const nextItem: HealthNewsItem = {
                 ...editingNews,
                 titleEn: editingNews.titleEn || editingNews.titleFr,
@@ -439,27 +541,29 @@ export function AdminHealthSectionPanel({
               const news = exists
                 ? section.news.map(n => (n.id === nextItem.id ? nextItem : n))
                 : [nextItem, ...section.news];
-              setEditingNews(null);
-              await commit({ news });
+              const ok = await commit({ news });
+              if (ok) setEditingNews(null);
+              else setModalError('Impossible d’enregistrer l’actualité. Veuillez réessayer.');
             }}
           >
+            {modalError && <div className="gm-error-alert" role="alert" style={{ marginBottom: 12 }}>{modalError}</div>}
             <div className="form-grid">
               <label>
                 Étiquette *
-                <input required value={editingNews.tagFr} onChange={e => setEditingNews({ ...editingNews, tagFr: e.target.value })} />
+                <input required disabled={saving} value={editingNews.tagFr} onChange={e => setEditingNews({ ...editingNews, tagFr: e.target.value })} />
               </label>
               <label>
                 Date
-                <input value={editingNews.dateFr} onChange={e => setEditingNews({ ...editingNews, dateFr: e.target.value })} />
+                <input disabled={saving} value={editingNews.dateFr} onChange={e => setEditingNews({ ...editingNews, dateFr: e.target.value })} />
               </label>
               <label>
                 Durée de lecture
-                <input value={editingNews.readTime} onChange={e => setEditingNews({ ...editingNews, readTime: e.target.value })} />
+                <input disabled={saving} value={editingNews.readTime} onChange={e => setEditingNews({ ...editingNews, readTime: e.target.value })} />
               </label>
             </div>
             <label className="form-field">
               Image éditoriale
-              <select value={editingNews.image} onChange={e => setEditingNews({ ...editingNews, image: e.target.value })}>
+              <select disabled={saving} value={editingNews.image} onChange={e => setEditingNews({ ...editingNews, image: e.target.value })}>
                 {VERIFIED_IMAGE_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
@@ -467,37 +571,49 @@ export function AdminHealthSectionPanel({
             </label>
             <label className="form-field">
               Titre de l’actualité *
-              <input required value={editingNews.titleFr} onChange={e => setEditingNews({ ...editingNews, titleFr: e.target.value })} />
+              <input required disabled={saving} value={editingNews.titleFr} onChange={e => setEditingNews({ ...editingNews, titleFr: e.target.value })} />
             </label>
             <label className="form-field">
               Chapô / Extrait *
-              <textarea rows={2} required value={editingNews.excerptFr} onChange={e => setEditingNews({ ...editingNews, excerptFr: e.target.value })} />
+              <textarea rows={2} required disabled={saving} value={editingNews.excerptFr} onChange={e => setEditingNews({ ...editingNews, excerptFr: e.target.value })} />
             </label>
             <label className="form-field">
               Recommandations clés (une par ligne)
               <textarea
                 rows={3}
+                disabled={saving}
                 value={editingNews.keyPointsFr.join('\n')}
                 onChange={e => setEditingNews({ ...editingNews, keyPointsFr: e.target.value.split('\n').map(v => v.trim()).filter(Boolean) })}
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setEditingNews(null)}>Annuler</button>
-              <button type="submit" className="primary-btn" disabled={saving}><Save size={14} /> Enregistrer et publier</button>
+              <button type="button" className="outline-btn" disabled={saving} onClick={() => setEditingNews(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={saving}>
+                <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer et publier'}
+              </button>
             </div>
           </form>
         </Modal>
       )}
 
       {editingEmergency && (
-        <Modal title="Éditer le numéro d’urgence" icon={<ModernPhoneCallIcon size={20} />} onClose={() => setEditingEmergency(null)} wide>
+        <Modal
+          title="Éditer le numéro d’urgence"
+          icon={<ModernPhoneCallIcon size={20} />}
+          onClose={() => { if (!saving) setEditingEmergency(null); }}
+          wide
+        >
           <form
             onSubmit={async e => {
               e.preventDefault();
-              const cleanTel = editingEmergency.number.replace(/[^+\d]/g, '');
+              if (saving) return;
+              setModalError('');
+              const rawNumber = editingEmergency.number.trim();
+              const isPhoneLike = /^[+\d\s()-]{2,20}$/.test(rawNumber);
+              const cleanTel = isPhoneLike ? rawNumber.replace(/[^+\d]/g, '') : '';
               const nextItem: EmergencyNumberItem = {
                 ...editingEmergency,
-                telHref: cleanTel ? `tel:${cleanTel}` : editingEmergency.telHref,
+                telHref: cleanTel ? `tel:${cleanTel}` : undefined,
                 badgeEn: editingEmergency.badgeEn || editingEmergency.badgeFr,
                 titleEn: editingEmergency.titleEn || editingEmergency.titleFr,
                 serviceEn: editingEmergency.serviceEn || editingEmergency.serviceFr,
@@ -508,58 +624,82 @@ export function AdminHealthSectionPanel({
               const emergencyNumbers = exists
                 ? section.emergencyNumbers.map(n => (n.id === nextItem.id ? nextItem : n))
                 : [nextItem, ...section.emergencyNumbers];
-              setEditingEmergency(null);
-              await commit({ emergencyNumbers });
+              const ok = await commit({ emergencyNumbers });
+              if (ok) setEditingEmergency(null);
+              else setModalError('Impossible d’enregistrer le numéro d’urgence. Veuillez réessayer.');
             }}
           >
+            {modalError && <div className="gm-error-alert" role="alert" style={{ marginBottom: 12 }}>{modalError}</div>}
             <div className="form-grid">
               <label>
                 Numéro principal *
-                <input required value={editingEmergency.number} onChange={e => setEditingEmergency({ ...editingEmergency, number: e.target.value })} placeholder="Ex. 1313" />
+                <input required disabled={saving} value={editingEmergency.number} onChange={e => setEditingEmergency({ ...editingEmergency, number: e.target.value })} placeholder="Ex. 1313" />
               </label>
               <label>
                 Ligne alternative
-                <input value={editingEmergency.secondaryNumber || ''} onChange={e => setEditingEmergency({ ...editingEmergency, secondaryNumber: e.target.value })} />
+                <input disabled={saving} value={editingEmergency.secondaryNumber || ''} onChange={e => setEditingEmergency({ ...editingEmergency, secondaryNumber: e.target.value })} />
+              </label>
+              <label>
+                Badge d’affichage
+                <input disabled={saving} value={editingEmergency.badgeFr} onChange={e => setEditingEmergency({ ...editingEmergency, badgeFr: e.target.value })} placeholder="Ex. Numéro Vert Gratuit / Hôpital 24h/7j" />
               </label>
               <label>
                 Catégorie
                 <select
+                  disabled={saving}
                   value={editingEmergency.category}
                   onChange={e => setEditingEmergency({ ...editingEmergency, category: e.target.value as EmergencyNumberItem['category'] })}
                 >
                   <option value="green">Numéro Vert / Gratuit</option>
-                  <option value="hospital">Hôpitaux & Sang</option>
-                  <option value="rescue">Secours & Police</option>
+                  <option value="hospital">Hôpitaux &amp; Sang</option>
+                  <option value="rescue">Secours &amp; Police</option>
                 </select>
               </label>
             </div>
             <label className="form-field">
               Intitulé du service *
-              <input required value={editingEmergency.titleFr} onChange={e => setEditingEmergency({ ...editingEmergency, titleFr: e.target.value })} />
+              <input required disabled={saving} value={editingEmergency.titleFr} onChange={e => setEditingEmergency({ ...editingEmergency, titleFr: e.target.value })} />
             </label>
             <label className="form-field">
               Organisme / Structure *
-              <input required value={editingEmergency.serviceFr} onChange={e => setEditingEmergency({ ...editingEmergency, serviceFr: e.target.value })} />
+              <input required disabled={saving} value={editingEmergency.serviceFr} onChange={e => setEditingEmergency({ ...editingEmergency, serviceFr: e.target.value })} />
             </label>
             <label className="form-field">
-              Description & couverture *
-              <textarea rows={2} required value={editingEmergency.descFr} onChange={e => setEditingEmergency({ ...editingEmergency, descFr: e.target.value })} />
+              Description &amp; couverture *
+              <textarea rows={2} required disabled={saving} value={editingEmergency.descFr} onChange={e => setEditingEmergency({ ...editingEmergency, descFr: e.target.value })} />
             </label>
             <label className="check-field">
               <input
                 type="checkbox"
+                disabled={saving}
                 checked={Boolean(editingEmergency.isTollFree)}
                 onChange={e => setEditingEmergency({ ...editingEmergency, isTollFree: e.target.checked })}
               />
               Mettre en avant comme Numéro Vert gratuit
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setEditingEmergency(null)}>Annuler</button>
-              <button type="submit" className="primary-btn" disabled={saving}><Save size={14} /> Enregistrer et publier</button>
+              <button type="button" className="outline-btn" disabled={saving} onClick={() => setEditingEmergency(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={saving}>
+                <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer et publier'}
+              </button>
             </div>
           </form>
         </Modal>
       )}
+
+      <ConfirmDangerModal
+        open={Boolean(deleteConfirm)}
+        title={deleteConfirm?.title || 'Confirmer la suppression'}
+        message={deleteConfirm?.message || ''}
+        confirmLabel="Supprimer"
+        busy={saving}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={async () => {
+          if (!deleteConfirm) return;
+          const ok = await commit(deleteConfirm.patch);
+          if (ok) setDeleteConfirm(null);
+        }}
+      />
     </>
   );
 }

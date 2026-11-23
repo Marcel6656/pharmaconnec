@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import {
   AppData, Badge, Pharmacy, PharmacyStatus, Product, ProductStatus,
-  seed, money, BadgeGlyph, Status, Empty,
+  seed, money, BadgeGlyph, Status, Empty, isBadgeActive,
   SectionTitle, Metric, Modal, ProductTable, PharmacyTable,
   PaymentsTable, RuleRow,
 } from '@/lib/shared';
@@ -45,14 +45,14 @@ import {
   apiAdminUpdateUser, apiAdminUpdateUserStatus, apiAdminUsers, apiLogin, apiMe, clearAuthToken, getAuthToken, reloadOnAuthChange,
   fetchBackendState,
 } from '@/lib/api';
-import {
-  HealthSectionPayload,
-} from '@/lib/health-section';
+import { DEFAULT_EMERGENCY_NUMBERS, DEFAULT_HEALTH_ALERTS, DEFAULT_HEALTH_NEWS, HealthSectionPayload } from '@/lib/health-section';
 import { AdminUsersPanel } from '@/components/admin/AdminUsersPanel';
 import { AdminHealthSectionPanel } from '@/components/admin/AdminHealthSectionPanel';
 import { AdminPharmacyDossierModal } from '@/components/admin/AdminPharmacyDossierModal';
+import { AdminProductInspectModal } from '@/components/admin/AdminProductInspectModal';
 import { AdminLoginScreen } from '@/components/admin/AdminLoginScreen';
 import { AdminDashboardView } from '@/components/admin/AdminDashboardView';
+import { ConfirmDangerModal } from '@/components/admin/ConfirmDangerModal';
 import { PageTransitionStage } from '@/components/shared/MotionStage';
 
 interface PoleTabItem {
@@ -106,6 +106,9 @@ const PAGE_POLE_MAP: Record<string, string> = {
   'Paramètres plateforme': 'Vigilance & Système',
 };
 
+const normalizeBadgeColor = (color: string): 'mint' | 'blue' | 'slate' =>
+  color === 'blue' || color === 'slate' ? color : 'mint';
+
 const emptyAdminData: AppData = {
   ...seed, products: [], pharmacies: [], messages: [], badges: [], payments: [],
   plans: [], notices: [], reports: [], auditLogs: [], preferences: {},
@@ -114,6 +117,7 @@ const emptyAdminData: AppData = {
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [adminIdentity, setAdminIdentity] = useState<{ name: string; email: string } | null>(null);
+  const [currentAdminId, setCurrentAdminId] = useState<number | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -188,6 +192,23 @@ export default function AdminPage() {
     status: ProductStatus;
   } | null>(null);
   const [renamingCategory, setRenamingCategory] = useState<{ oldName: string; nextName: string } | null>(null);
+  const [adminModalBusy, setAdminModalBusy] = useState(false);
+  const [pharmacyStatusBusy, setPharmacyStatusBusy] = useState(false);
+  const [productActionBusy, setProductActionBusy] = useState(false);
+  const [inspectedProduct, setInspectedProduct] = useState<Product | null>(null);
+  const [savingPlan, setSavingPlan] = useState<string | null>(null);
+  const [reportDecision, setReportDecision] = useState<{
+    report: AppData['reports'][number];
+    status: 'Résolu' | 'Rejeté';
+    note: string;
+  } | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [dangerConfirm, setDangerConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    action: () => Promise<void>;
+  } | null>(null);
 
   useEffect(() => {
     const drafts: Record<string, { monthly: string; quarterly: string; yearly: string; description: string; features: string }> = {};
@@ -242,11 +263,17 @@ export default function AdminPage() {
     }
     if (healthCfg) {
       setHealthSection({
-        alerts: Array.isArray(healthCfg.alerts) ? healthCfg.alerts : [],
-        news: Array.isArray(healthCfg.news) ? healthCfg.news : [],
-        emergencyNumbers: Array.isArray(healthCfg.emergencyNumbers) ? healthCfg.emergencyNumbers : [],
+        alerts: Array.isArray(healthCfg.alerts) && healthCfg.alerts.length > 0 ? healthCfg.alerts : DEFAULT_HEALTH_ALERTS,
+        news: Array.isArray(healthCfg.news) && healthCfg.news.length > 0 ? healthCfg.news : DEFAULT_HEALTH_NEWS,
+        emergencyNumbers: Array.isArray(healthCfg.emergencyNumbers) && healthCfg.emergencyNumbers.length > 0 ? healthCfg.emergencyNumbers : DEFAULT_EMERGENCY_NUMBERS,
         updatedAt: healthCfg.updatedAt,
         updatedBy: healthCfg.updatedBy,
+      });
+    } else {
+      setHealthSection({
+        alerts: DEFAULT_HEALTH_ALERTS,
+        news: DEFAULT_HEALTH_NEWS,
+        emergencyNumbers: DEFAULT_EMERGENCY_NUMBERS,
       });
     }
     if (!remote || !dash) return null;
@@ -278,6 +305,7 @@ export default function AdminPage() {
       if (!active) return;
       if (me?.role === 'ADMIN') {
         sessionStorage.setItem('pharmaconnect-admin-auth', 'true');
+        setCurrentAdminId(me.id);
         setAdminIdentity({ name: me.name || 'Administrateur', email: me.email });
         setIsAuthenticated(true);
         const merged = await loadAllAdminData();
@@ -306,6 +334,7 @@ export default function AdminPage() {
     const apiResult = await apiLogin(loginEmail, loginPassword, 'ADMIN');
     if (apiResult.ok) {
       sessionStorage.setItem('pharmaconnect-admin-auth', 'true');
+      setCurrentAdminId(apiResult.data.user.id);
       setAdminIdentity({
         name: apiResult.data.user.name || 'Administrateur',
         email: apiResult.data.user.email,
@@ -335,51 +364,65 @@ export default function AdminPage() {
     setDashboardStats(null);
     setServerAuditLogs([]);
     setAdminIdentity(null);
+    setCurrentAdminId(null);
     setIsAuthenticated(false);
     setLoginPassword('');
   };
 
-  async function executePharmacyStatus(id: number, status: PharmacyStatus, note?: string) {
+  async function executePharmacyStatus(id: number, status: PharmacyStatus, note?: string): Promise<boolean> {
     const original = data.pharmacies.find(p => p.id === id);
-    if (!original) return;
-    const res = await apiAdminUpdatePharmacyStatus(id, status, note);
-    if (!res.ok) {
-      say(res.error);
-      return;
-    }
+    if (!original) return false;
+    setPharmacyStatusBusy(true);
+    try {
+      const res = await apiAdminUpdatePharmacyStatus(id, status, note);
+      if (!res.ok) {
+        say(res.error);
+        return false;
+      }
 
     const returnedStatus = res.data.status;
     const startsTrial = Boolean(res.data.trialEndsAt && !original.trialEndsAt && !original.subscriptionEndsAt);
     await refreshAdminState();
 
-    if (returnedStatus === 'Abonnement expiré' && status === 'Validée') {
-      say('Réactivation refusée : l’abonnement ou l’essai est expiré.');
-    } else if (status === 'Validée' && startsTrial) {
-      say('Établissement validé. Votre essai gratuit de 14 jours commence maintenant.');
-    } else {
-      say(`Établissement ${String(returnedStatus).toLowerCase()}.`);
+      if (returnedStatus === 'Abonnement expiré' && status === 'Validée') {
+        say('Réactivation refusée : l’abonnement ou l’essai est expiré.');
+        return false;
+      } else if (status === 'Validée' && startsTrial) {
+        say('Établissement validé. Votre essai gratuit de 14 jours commence maintenant.');
+      } else {
+        say(`Établissement ${String(returnedStatus).toLowerCase()}.`);
+      }
+      return true;
+    } finally {
+      setPharmacyStatusBusy(false);
     }
   }
 
-  function requestPharmacyStatusChange(id: number, status: PharmacyStatus) {
+  async function requestPharmacyStatusChange(id: number, status: PharmacyStatus): Promise<boolean> {
     const target = data.pharmacies.find(p => p.id === id);
     if (target && (status === 'Refusée' || status === 'Suspendue')) {
       setPharmacyDecision({ pharmacy: target, status, note: '' });
-      return;
+      return true;
     }
-    void executePharmacyStatus(id, status);
+    return executePharmacyStatus(id, status);
   }
 
-  async function productStatus(id: number, status: ProductStatus, note?: string) {
-    const expectedModifiedAt = status === 'Publié' ? data.products.find(product => product.id === id)?.modifiedAt : undefined;
-    const res = await apiAdminUpdateProductStatus(id, status, note, expectedModifiedAt);
-    if (!res.ok) {
-      if (status === 'Publié') await refreshAdminState();
-      say(res.error);
-      return;
+  async function productStatus(id: number, status: ProductStatus, note?: string): Promise<boolean> {
+    setProductActionBusy(true);
+    try {
+      const expectedModifiedAt = status === 'Publié' ? data.products.find(product => product.id === id)?.modifiedAt : undefined;
+      const res = await apiAdminUpdateProductStatus(id, status, note, expectedModifiedAt);
+      if (!res.ok) {
+        if (status === 'Publié') await refreshAdminState();
+        say(res.error);
+        return false;
+      }
+      await refreshAdminState();
+      say(`Statut du produit mis à jour : ${status}.`);
+      return true;
+    } finally {
+      setProductActionBusy(false);
     }
-    await refreshAdminState();
-    say(`Statut du produit mis à jour : ${status}.`);
   }
 
   async function updateContactStatus(id: number, status: AdminContactItem['status']) {
@@ -393,15 +436,22 @@ export default function AdminPage() {
     say(`Demande de contact marquée « ${status} ».`);
   }
 
-  async function removeProduct(id: number) {
-    if (!window.confirm('Supprimer définitivement ce produit ?')) return;
-    const res = await apiAdminRemoveProduct(id);
-    if (!res.ok) {
-      say(res.error);
-      return;
-    }
-    await refreshAdminState();
-    say('Produit supprimé.');
+  function removeProduct(id: number) {
+    const target = data.products.find(p => p.id === id);
+    setDangerConfirm({
+      title: 'Supprimer le produit',
+      message: `Supprimer définitivement le produit « ${target?.name || `#${id}`} » du catalogue ?`,
+      confirmLabel: 'Supprimer le produit',
+      action: async () => {
+        const res = await apiAdminRemoveProduct(id);
+        if (!res.ok) {
+          say(res.error);
+          return;
+        }
+        await refreshAdminState();
+        say('Produit supprimé.');
+      },
+    });
   }
 
   function openCreatePharmacyModal() {
@@ -439,15 +489,21 @@ export default function AdminPage() {
     });
   }
 
-  async function handleDeletePharmacy(p: Pharmacy) {
-    if (!window.confirm(`Supprimer définitivement l’établissement « ${p.name} » et toutes ses données associées ?`)) return;
-    const res = await apiAdminDeletePharmacy(p.id);
-    if (!res.ok) {
-      say(res.error);
-      return;
-    }
-    await refreshAdminState();
-    say('Établissement supprimé.');
+  function handleDeletePharmacy(p: Pharmacy) {
+    setDangerConfirm({
+      title: 'Supprimer l’établissement',
+      message: `Supprimer définitivement l’établissement « ${p.name} » et toutes ses données associées ?`,
+      confirmLabel: 'Supprimer l’établissement',
+      action: async () => {
+        const res = await apiAdminDeletePharmacy(p.id);
+        if (!res.ok) {
+          say(res.error);
+          return;
+        }
+        await refreshAdminState();
+        say('Établissement supprimé.');
+      },
+    });
   }
 
   function openCreateProductModal() {
@@ -508,27 +564,33 @@ export default function AdminPage() {
 
   async function saveBadge(e: React.FormEvent) {
     e.preventDefault();
+    if (adminModalBusy) return;
     const parsedExpiry = badgeForm.expiryDays ? Number(badgeForm.expiryDays) : null;
     if (parsedExpiry !== null && (!Number.isFinite(parsedExpiry) || parsedExpiry < 1)) {
       say('La durée d’expiration du badge doit être supérieure ou égale à 1 jour.');
       return;
     }
-    const res = await apiAdminSaveBadge(editingBadge?.id || null, {
-      name: badgeForm.name.trim(),
-      description: badgeForm.description.trim(),
-      color: badgeForm.color,
-      icon: badgeForm.icon,
-      visible: isVerifiedSystem ? true : badgeForm.visible,
-      expiryDays: isVerifiedSystem ? null : parsedExpiry,
-    });
-    if (!res.ok) {
-      say(res.error);
-      return;
+    setAdminModalBusy(true);
+    try {
+      const res = await apiAdminSaveBadge(editingBadge?.id || null, {
+        name: badgeForm.name.trim(),
+        description: badgeForm.description.trim(),
+        color: normalizeBadgeColor(badgeForm.color),
+        icon: badgeForm.icon,
+        visible: isVerifiedSystem ? true : badgeForm.visible,
+        expiryDays: isVerifiedSystem ? null : parsedExpiry,
+      });
+      if (!res.ok) {
+        say(res.error);
+        return;
+      }
+      setModal(null);
+      setEditingBadge(null);
+      await refreshAdminState();
+      say('Badge enregistré.');
+    } finally {
+      setAdminModalBusy(false);
     }
-    setModal(null);
-    setEditingBadge(null);
-    await refreshAdminState();
-    say('Badge enregistré.');
   }
 
   async function setPharmacyBadge(pharmacy: number, badge: number, checked: boolean) {
@@ -567,6 +629,18 @@ export default function AdminPage() {
       return `${l.actor} ${l.action} ${l.entity} ${l.entityId ?? ''} ${l.date}`.toLowerCase().includes(q);
     });
   }, [serverAuditLogs, data.auditLogs, auditActorFilter, auditQuery]);
+
+  const communityPoleTabs: PoleTabItem[] = [
+    { id: 'Comptes utilisateurs', label: 'Comptes & Rôles', count: users.length },
+    { id: 'Rubrique Santé', label: 'Rubrique Santé' },
+  ];
+
+  const offerPoleTabs: PoleTabItem[] = [
+    { id: 'Abonnements', label: 'Paiements & Abonnements', count: pendingPaymentsList.length },
+    { id: 'Formules', label: 'Grille tarifaire (Formules)', count: data.plans.length },
+    { id: 'Catégories plateforme', label: 'Catégories officielles', count: data.platformCategories.length },
+    { id: 'Badges', label: 'Badges & Distinctions', count: data.badges.length },
+  ];
 
   const navGroups: Array<{ label: string; items: Array<[string, any, number?]> }> = [
     {
@@ -789,168 +863,172 @@ export default function AdminPage() {
             )}
 
             <PageTransitionStage routeKey={`adm-${page}`}>
-            {page === 'Tableau de bord' && (
-              <AdminDashboardView
-                data={data}
-                pendingPharmacies={pendingPharmacies}
-                pendingProducts={pendingProducts}
-                pendingPaymentsCount={pendingPaymentsList.length}
-                openReportsCount={openReportsList.length}
-                openContactsCount={openContactsCount}
-                confirmedRevenue={confirmedRevenue}
-                usersCount={users.length || dashboardStats?.usersCount || 0}
-                auditLogs={combinedAuditLogs}
-                healthSection={healthSection}
-                onNavigate={go}
-                onInspectPharmacy={setInspectedPharmacy}
-                onApprovePharmacy={id => void executePharmacyStatus(id, 'Validée')}
-                onApproveProduct={(id, status) => void productStatus(id, status)}
-              />
-            )}
+              {page === 'Tableau de bord' && (
+                <AdminDashboardView
+                  data={data}
+                  pendingPharmacies={pendingPharmacies}
+                  pendingProducts={pendingProducts}
+                  pendingPaymentsCount={pendingPaymentsList.length}
+                  openReportsCount={openReportsList.length}
+                  openContactsCount={openContactsCount}
+                  confirmedRevenue={confirmedRevenue}
+                  usersCount={users.length || dashboardStats?.usersCount || 0}
+                  auditLogs={combinedAuditLogs}
+                  healthSection={healthSection}
+                  onNavigate={go}
+                  onInspectPharmacy={setInspectedPharmacy}
+                  onInspectProduct={setInspectedProduct}
+                  onApprovePharmacy={id => void executePharmacyStatus(id, 'Validée')}
+                  onApproveProduct={(id, status) => void productStatus(id, status)}
+                />
+              )}
 
-            {page === 'Demandes pharmacies' && (
-              <>
-                <SectionTitle
-                  eyebrow="RÉSEAU & CATALOGUE · AGRÉMENTS"
-                  title="Demandes d’agrément pharmacies"
-                  desc="Vérifiez les justificatifs officiels, examinez chaque dossier complet et motivez les décisions."
-                  icon={<ModernDocumentCheckIcon size={24} />}
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
-                    { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
-                    { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
-                  ]}
-                />
-                <div className="admin-filter-row">
-                  {['Toutes', 'En attente', 'En vérification', 'Validée', 'Refusée'].map(s => (
-                    <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
-                      {s} ({s === 'Toutes' ? data.pharmacies.length : data.pharmacies.filter(p => p.status === s).length})
-                    </button>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel">
-                  <PharmacyTable
-                    rows={data.pharmacies.filter(p => adminTab === 'Toutes' || p.status === adminTab)}
-                    onStatus={requestPharmacyStatusChange}
-                    onInspect={setInspectedPharmacy}
-                    onEdit={openEditPharmacyModal}
-                    onDelete={handleDeletePharmacy}
-                    showDocuments
-                    onDownloadDocument={async (docId, fileName) => {
-                      const res = await apiAdminDownloadDocument(docId, fileName);
-                      if (!res.ok) say(res.error);
-                    }}
+              {page === 'Demandes pharmacies' && (
+                <>
+                  <SectionTitle
+                    eyebrow="RÉSEAU & CATALOGUE · AGRÉMENTS"
+                    title="Demandes d’agrément pharmacies"
+                    desc="Vérifiez les justificatifs officiels, examinez chaque dossier complet et motivez les décisions."
+                    icon={<ModernDocumentCheckIcon size={24} />}
                   />
-                </section>
-              </>
-            )}
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
+                      { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
+                      { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
+                    ]}
+                  />
+                  <div className="admin-filter-row">
+                    {['Toutes', 'En attente', 'En vérification', 'Validée', 'Refusée'].map(s => (
+                      <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
+                        {s} ({s === 'Toutes' ? data.pharmacies.length : data.pharmacies.filter(p => p.status === s).length})
+                      </button>
+                    ))}
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <PharmacyTable
+                      rows={data.pharmacies.filter(p => adminTab === 'Toutes' || p.status === adminTab)}
+                      onStatus={requestPharmacyStatusChange}
+                      onInspect={setInspectedPharmacy}
+                      onEdit={openEditPharmacyModal}
+                      onDelete={handleDeletePharmacy}
+                      showDocuments
+                      onDownloadDocument={async (docId, fileName) => {
+                        const res = await apiAdminDownloadDocument(docId, fileName);
+                        if (!res.ok) say(res.error);
+                      }}
+                    />
+                  </section>
+                </>
+              )}
 
-            {page === 'Pharmacies' && (
-              <>
-                <SectionTitle
-                  eyebrow="RÉSEAU & CATALOGUE · ANNUAIRE"
-                  title="Gestion des pharmacies"
-                  desc="Consultez l’ensemble des officines, inspectez leurs dossiers et gérez leur état d’exploitation."
-                  icon={<ModernDigitalStoreIcon size={24} />}
-                  action={
-                    <button type="button" className="primary-btn" onClick={openCreatePharmacyModal}>
-                      <Plus size={15} /> Ajouter une pharmacie
-                    </button>
-                  }
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
-                    { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
-                    { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
-                  ]}
-                />
-                <div className="toolbar">
-                  <label className="search-box">
-                    <ModernSearchMedicineIcon size={17} />
-                    <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher une pharmacie par nom, ville ou quartier…" />
-                  </label>
-                  <select value={adminTab} onChange={e => setAdminTab(e.target.value)}>
-                    <option>Tous</option>
-                    {['Validée', 'En attente', 'En vérification', 'Suspendue', 'Abonnement expiré', 'Refusée'].map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <section className="panel cg-modern-panel">
-                  <PharmacyTable
-                    rows={data.pharmacies.filter(p => (adminTab === 'Tous' || p.status === adminTab) && (!query || `${p.name} ${p.city} ${p.area}`.toLowerCase().includes(query.toLowerCase())))}
-                    onStatus={requestPharmacyStatusChange}
-                    onInspect={setInspectedPharmacy}
-                    onEdit={openEditPharmacyModal}
-                    onDelete={handleDeletePharmacy}
-                    showDocuments
-                    onDownloadDocument={async (docId, fileName) => {
-                      const res = await apiAdminDownloadDocument(docId, fileName);
-                      if (!res.ok) say(res.error);
-                    }}
+              {page === 'Pharmacies' && (
+                <>
+                  <SectionTitle
+                    eyebrow="RÉSEAU & CATALOGUE · ANNUAIRE"
+                    title="Gestion des pharmacies"
+                    desc="Consultez l’ensemble des officines, inspectez leurs dossiers et gérez leur état d’exploitation."
+                    icon={<ModernDigitalStoreIcon size={24} />}
+                    action={
+                      <button type="button" className="primary-btn" onClick={openCreatePharmacyModal}>
+                        <Plus size={15} /> Ajouter une pharmacie
+                      </button>
+                    }
                   />
-                </section>
-              </>
-            )}
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
+                      { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
+                      { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
+                    ]}
+                  />
+                  <div className="toolbar">
+                    <label className="search-box">
+                      <ModernSearchMedicineIcon size={17} />
+                      <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher une pharmacie par nom, ville ou quartier…" />
+                    </label>
+                    <select value={adminTab} onChange={e => setAdminTab(e.target.value)}>
+                      <option>Tous</option>
+                      {['Validée', 'En attente', 'En vérification', 'Suspendue', 'Abonnement expiré', 'Refusée'].map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <PharmacyTable
+                      rows={data.pharmacies.filter(p => (adminTab === 'Tous' || p.status === adminTab) && (!query || `${p.name} ${p.city} ${p.area}`.toLowerCase().includes(query.toLowerCase())))}
+                      onStatus={requestPharmacyStatusChange}
+                      onInspect={setInspectedPharmacy}
+                      onEdit={openEditPharmacyModal}
+                      onDelete={handleDeletePharmacy}
+                      showDocuments
+                      onDownloadDocument={async (docId, fileName) => {
+                        const res = await apiAdminDownloadDocument(docId, fileName);
+                        if (!res.ok) say(res.error);
+                      }}
+                    />
+                  </section>
+                </>
+              )}
 
-            {page === 'Validation produits' && (
-              <>
-                <SectionTitle
-                  eyebrow="RÉSEAU & CATALOGUE · MODÉRATION"
-                  title="Validation des produits"
-                  desc="Approuvez, demandez une correction ou refusez les fiches produits avant publication publique."
-                  icon={<ModernPackageBoxIcon size={24} />}
-                  action={
-                    <button type="button" className="primary-btn" onClick={openCreateProductModal}>
-                      <Plus size={15} /> Ajouter un produit
-                    </button>
-                  }
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
-                    { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
-                    { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
-                  ]}
-                />
-                <div className="toolbar">
-                  <label className="search-box">
-                    <ModernSearchMedicineIcon size={17} />
-                    <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un produit, marque ou pharmacie…" />
-                  </label>
-                </div>
-                <div className="admin-filter-row">
-                  {['Tous', 'En attente', 'À corriger', 'Publié', 'Refusé', 'Masqué', 'Suspendu', 'Archivé'].map(s => (
-                    <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
-                      {s} ({s === 'Tous' ? data.products.length : data.products.filter(p => p.status === s).length})
-                    </button>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel">
-                  <ProductTable
-                    rows={data.products.filter(p => (adminTab === 'Tous' || p.status === adminTab) && (!query || `${p.name} ${p.brand} ${p.code} ${data.pharmacies.find(ph => ph.id === p.pharmacyId)?.name || ''}`.toLowerCase().includes(query.toLowerCase())))}
-                    onEdit={openEditProductModal}
-                    onStatus={productStatus}
-                    onRequestModerationNote={(product, status) => setModerationTarget({ product, status, note: product.note || '' })}
-                    onDelete={removeProduct}
-                    admin
-                    pharmacies={data.pharmacies}
+              {page === 'Validation produits' && (
+                <>
+                  <SectionTitle
+                    eyebrow="RÉSEAU & CATALOGUE · MODÉRATION"
+                    title="Validation des produits"
+                    desc="Approuvez, demandez une correction ou refusez les fiches produits avant publication publique."
+                    icon={<ModernPackageBoxIcon size={24} />}
+                    action={
+                      <button type="button" className="primary-btn" onClick={openCreateProductModal}>
+                        <Plus size={15} /> Ajouter un produit
+                      </button>
+                    }
                   />
-                </section>
-              </>
-            )}
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Demandes pharmacies', label: 'Agréments & validation', count: pendingPharmacies.length },
+                      { id: 'Pharmacies', label: 'Annuaire complet', count: data.pharmacies.length },
+                      { id: 'Validation produits', label: 'Modération produits', count: pendingProducts.length },
+                    ]}
+                  />
+                  <div className="toolbar">
+                    <label className="search-box">
+                      <ModernSearchMedicineIcon size={17} />
+                      <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un produit, marque ou pharmacie…" />
+                    </label>
+                  </div>
+                  <div className="admin-filter-row">
+                    {['Tous', 'En attente', 'À corriger', 'Publié', 'Refusé', 'Masqué', 'Suspendu', 'Archivé'].map(s => (
+                      <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
+                        {s} ({s === 'Tous' ? data.products.length : data.products.filter(p => p.status === s).length})
+                      </button>
+                    ))}
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <ProductTable
+                      rows={data.products.filter(p => (adminTab === 'Tous' || p.status === adminTab) && (!query || `${p.name} ${p.brand} ${p.code} ${data.pharmacies.find(ph => ph.id === p.pharmacyId)?.name || ''}`.toLowerCase().includes(query.toLowerCase())))}
+                      onInspect={setInspectedProduct}
+                      onEdit={openEditProductModal}
+                      onStatus={productStatus}
+                      onRequestModerationNote={(product, status) => setModerationTarget({ product, status, note: product.note || '' })}
+                      onDelete={removeProduct}
+                      admin
+                      pharmacies={data.pharmacies}
+                    />
+                  </section>
+                </>
+              )}
 
             {page === 'Comptes utilisateurs' && (
               <AdminUsersPanel
                 users={users}
                 loading={usersLoading}
+                currentAdminId={currentAdminId}
+                subNav={<PoleSubNav activePage={page} onSelect={go} tabs={communityPoleTabs} />}
                 onRefresh={async () => {
                   setUsersLoading(true);
                   const list = await apiAdminUsers();
@@ -972,23 +1050,23 @@ export default function AdminPage() {
                   const res = await apiAdminCreateUser(payload);
                   if (!res.ok) {
                     say(res.error);
-                    return false;
+                    return { ok: false, error: res.error };
                   }
                   setUsers(prev => [...prev, res.data]);
                   await refreshAdminState();
                   say('Compte utilisateur créé.');
-                  return true;
+                  return { ok: true };
                 }}
                 onUpdateUser={async (userId, payload) => {
                   const res = await apiAdminUpdateUser(userId, payload);
                   if (!res.ok) {
                     say(res.error);
-                    return false;
+                    return { ok: false, error: res.error };
                   }
                   setUsers(prev => prev.map(u => (u.id === userId ? res.data : u)));
                   await refreshAdminState();
                   say('Compte utilisateur mis à jour.');
-                  return true;
+                  return { ok: true };
                 }}
                 onDeleteUser={async (userId) => {
                   const res = await apiAdminDeleteUser(userId);
@@ -1011,14 +1089,7 @@ export default function AdminPage() {
                   desc="Gérez le référentiel officiel partagé dans le catalogue public et les espaces officines."
                   icon={<ModernTagCategoryIcon size={24} />}
                 />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Catégories plateforme', label: 'Catégories officielles', count: data.platformCategories.length },
-                    { id: 'Badges', label: 'Badges & Distinctions', count: data.badges.length },
-                  ]}
-                />
+                <PoleSubNav activePage={page} onSelect={go} tabs={offerPoleTabs} />
                 <div className="pc-adm-split-grid">
                   <section className="panel cg-modern-panel">
                     <div className="panel-heading">
@@ -1028,449 +1099,185 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <form className="inline-create" onSubmit={async e => {
-                      e.preventDefault();
-                      const value = newPlatformCategory.trim();
-                      if (!value) return;
-                      if (data.platformCategories.some(c => c.toLowerCase() === value.toLowerCase())) {
-                        say('Cette catégorie existe déjà.');
-                        return;
-                      }
-                      const res = await apiAdminAddCategory(value);
-                      if (!res.ok) {
-                        say(res.error);
-                        return;
-                      }
-                      setNewPlatformCategory('');
-                      await refreshAdminState();
-                      say('Catégorie officielle créée.');
-                    }}>
-                      <input value={newPlatformCategory} onChange={e => setNewPlatformCategory(e.target.value)} placeholder="Nom de la catégorie officielle" />
-                      <button type="submit" className="primary-btn"><Plus size={14} /> Ajouter</button>
-                    </form>
-                    <div className="info-note" style={{ marginTop: 14 }}>
-                      <ModernVerifiedShieldIcon size={17} /> Les catégories personnalisées ajoutées par une pharmacie restent privées à son espace et n’altèrent pas le référentiel officiel.
-                    </div>
-                  </section>
-
-                  <section className="panel cg-modern-panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h3>Référentiel actif ({data.platformCategories.length})</h3>
-                        <p>Nombre de produits rattachés à chaque catégorie.</p>
+                        e.preventDefault();
+                        const value = newPlatformCategory.trim();
+                        if (!value) return;
+                        if (data.platformCategories.some(c => c.toLowerCase() === value.toLowerCase())) {
+                          say('Cette catégorie existe déjà.');
+                          return;
+                        }
+                        const res = await apiAdminAddCategory(value);
+                        if (!res.ok) {
+                          say(res.error);
+                          return;
+                        }
+                        setNewPlatformCategory('');
+                        await refreshAdminState();
+                        say('Catégorie officielle créée.');
+                      }}>
+                        <input value={newPlatformCategory} onChange={e => setNewPlatformCategory(e.target.value)} placeholder="Nom de la catégorie officielle" />
+                        <button type="submit" className="primary-btn"><Plus size={14} /> Ajouter</button>
+                      </form>
+                      <div className="info-note" style={{ marginTop: 14 }}>
+                        <ModernVerifiedShieldIcon size={17} /> Les catégories personnalisées ajoutées par une pharmacie restent privées à son espace et n’altèrent pas le référentiel officiel.
                       </div>
-                    </div>
-                    <div className="pc-adm-cat-list">
-                      {data.platformCategories.map(c => {
-                        const usageCount = data.products.filter(p => p.category === c).length;
-                        return (
-                          <div className="pc-adm-cat-row" key={c}>
-                            <span className="pc-adm-cat-icon"><ModernTagCategoryIcon size={17} /></span>
-                            <div className="pc-adm-cat-meta">
-                              <b>{c}</b>
-                              <small>{usageCount} produit(s) associés</small>
-                            </div>
-                            <span className="pc-role-chip">Officielle</span>
-                            <ActionMenu
-                              label={`Actions pour ${c}`}
-                              items={[
-                                {
-                                  key: 'rename',
-                                  label: 'Renommer',
-                                  icon: <Pencil size={14} />,
-                                  onClick: () => setRenamingCategory({ oldName: c, nextName: c }),
-                                },
-                                {
-                                  key: 'delete',
-                                  label: 'Supprimer',
-                                  icon: <Trash2 size={14} />,
-                                  variant: 'danger',
-                                  dividerBefore: true,
-                                  onClick: async () => {
-                                    if (data.platformCategories.length <= 1) {
-                                      say('Au moins une catégorie officielle doit être conservée.');
-                                      return;
-                                    }
-                                    if (window.confirm(`Retirer la catégorie ${c} du référentiel ?`)) {
-                                      const res = await apiAdminRemoveCategory(c);
-                                      if (!res.ok) {
-                                        say(res.error);
+                    </section>
+
+                    <section className="panel cg-modern-panel">
+                      <div className="panel-heading">
+                        <div>
+                          <h3>Référentiel actif ({data.platformCategories.length})</h3>
+                          <p>Nombre de produits rattachés à chaque catégorie.</p>
+                        </div>
+                      </div>
+                      <div className="pc-adm-cat-list">
+                        {data.platformCategories.map(c => {
+                          const usageCount = data.products.filter(p => p.category === c).length;
+                          return (
+                            <div className="pc-adm-cat-row" key={c}>
+                              <span className="pc-adm-cat-icon"><ModernTagCategoryIcon size={17} /></span>
+                              <div className="pc-adm-cat-meta">
+                                <b>{c}</b>
+                                <small>{usageCount} produit(s) associés</small>
+                              </div>
+                              <span className="pc-role-chip">Officielle</span>
+                              <ActionMenu
+                                label={`Actions pour ${c}`}
+                                items={[
+                                  {
+                                    key: 'rename',
+                                    label: 'Renommer',
+                                    icon: <Pencil size={14} />,
+                                    onClick: () => setRenamingCategory({ oldName: c, nextName: c }),
+                                  },
+                                  {
+                                    key: 'delete',
+                                    label: 'Supprimer',
+                                    icon: <Trash2 size={14} />,
+                                    variant: 'danger',
+                                    dividerBefore: true,
+                                    onClick: () => {
+                                      if (data.platformCategories.length <= 1) {
+                                        say('Au moins une catégorie officielle doit être conservée.');
                                         return;
                                       }
-                                      await refreshAdminState();
-                                      say('Catégorie retirée du référentiel.');
-                                    }
+                                      setDangerConfirm({
+                                        title: 'Supprimer la catégorie officielle',
+                                        message: `Retirer la catégorie officielle « ${c} » du référentiel ?`,
+                                        confirmLabel: 'Retirer la catégorie',
+                                        action: async () => {
+                                          const res = await apiAdminRemoveCategory(c);
+                                          if (!res.ok) {
+                                            say(res.error);
+                                            return;
+                                          }
+                                          await refreshAdminState();
+                                          say('Catégorie retirée du référentiel.');
+                                        },
+                                      });
+                                    },
                                   },
-                                },
-                              ]}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                </div>
-              </>
-            )}
-
-            {page === 'Badges' && (
-              <>
-                <SectionTitle
-                  eyebrow="OFFRE & RÉFÉRENTIEL · DISTINCTIONS"
-                  title="Badges & distinctions"
-                  desc="Créez, configurez et attribuez des badges officiels aux fiches pharmacies vérifiées."
-                  icon={<ModernMetricAwardIcon size={24} />}
-                  action={
-                    <button type="button" className="primary-btn" onClick={() => {
-                      setEditingBadge(null);
-                      setBadgeForm({ name: '', description: '', color: 'mint', icon: 'shield', expiryDays: '', visible: true });
-                      setModal('badge');
-                    }}><Plus size={15} /> Créer un badge</button>
-                  }
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Catégories plateforme', label: 'Catégories officielles', count: data.platformCategories.length },
-                    { id: 'Badges', label: 'Badges & Distinctions', count: data.badges.length },
-                  ]}
-                />
-                <div className="badge-admin-grid">
-                  {data.badges.map(b => (
-                    <div className="panel cg-modern-panel badge-admin-card pc-adm-badge-card" key={b.id}>
-                      <div className="pc-adm-badge-top">
-                        <span className={`badge-emblem ${b.color}`}><BadgeGlyph icon={b.icon} size={23} /></span>
-                        <Status>{b.visible ? 'Publié' : 'Masqué'}</Status>
+                                ]}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
-                      <b>{b.name}</b>
-                      <p>{b.description || 'Badge distinctif officiel PharmaConnect.'}</p>
-                      <small>{b.expiryDays ? `Durée indicative : ${b.expiryDays} jours` : 'Permanent / Sans expiration'}</small>
-                      <div className="pc-adm-badge-actions">
-                        <ActionMenu
-                          label={`Actions pour ${b.name}`}
-                          items={[
-                            {
-                              key: 'edit',
-                              label: 'Modifier le badge',
-                              icon: <Pencil size={14} />,
-                              onClick: () => {
-                                setEditingBadge(b);
-                                setBadgeForm({ name: b.name, description: b.description, color: b.color, icon: b.icon, expiryDays: b.expiryDays ? String(b.expiryDays) : '', visible: b.visible });
-                                setModal('badge');
-                              },
-                            },
-                            ...(!b.system ? [{
-                              key: 'toggle-visibility',
-                              label: b.visible ? 'Masquer sur les fiches' : 'Afficher sur les fiches',
-                              icon: b.visible ? <EyeOff size={14} /> : <Eye size={14} />,
-                              onClick: async () => {
-                                const res = await apiAdminSaveBadge(b.id, {
-                                  name: b.name,
-                                  description: b.description,
-                                  color: b.color,
-                                  icon: b.icon,
-                                  visible: !b.visible,
-                                  expiryDays: b.expiryDays ?? null,
-                                });
-                                if (!res.ok) { say(res.error); return; }
-                                await refreshAdminState();
-                                say(b.visible ? 'Badge masqué.' : 'Badge affiché.');
-                              },
-                            }] : []),
-                            {
-                              key: 'delete',
-                              label: 'Supprimer',
-                              icon: <Trash2 size={14} />,
-                              variant: 'danger',
-                              dividerBefore: true,
-                              onClick: async () => {
-                                if (b.system) {
-                                  say('Le badge de vérification est obligatoire et ne peut pas être supprimé.');
-                                  return;
-                                }
-                                if (window.confirm('Supprimer ce badge ?')) {
-                                  const res = await apiAdminDeleteBadge(b.id);
-                                  if (!res.ok) {
-                                    say(res.error);
-                                    return;
-                                  }
-                                  await refreshAdminState();
-                                  say('Badge supprimé.');
-                                }
-                              },
-                            },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel" style={{ marginTop: 18 }}>
-                  <div className="panel-heading">
-                    <div>
-                      <h3>Attribution des badges par officine</h3>
-                      <p>La vérification administrative reste indépendante de la formule d’abonnement.</p>
-                    </div>
-                    <label className="search-box" style={{ maxWidth: 300, minWidth: 200 }}>
-                      <ModernSearchMedicineIcon size={16} />
-                      <input
-                        value={badgePharmacyQuery}
-                        onChange={e => setBadgePharmacyQuery(e.target.value)}
-                        placeholder="Filtrer une pharmacie…"
-                      />
-                    </label>
+                    </section>
                   </div>
-                  {filteredBadgePharmacies.map(p => (
-                    <div className="assign-badges-row" key={p.id}>
-                      <div><b>{p.name}</b><small>{p.city} · {p.status}</small></div>
-                      <div className="assign-options">
-                        {data.badges.map(b => (
-                          <label key={b.id}>
-                            <input type="checkbox" checked={p.badgeIds.includes(b.id)} onChange={e => setPharmacyBadge(p.id, b.id, e.target.checked)} />
-                            {b.name}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {filteredBadgePharmacies.length === 0 && (
-                    <Empty title="Aucune pharmacie trouvée" detail="Ajustez votre recherche d’établissement." />
-                  )}
-                </section>
-              </>
-            )}
+                </>
+              )}
 
-            {page === 'Rubrique Santé' && (
-              <AdminHealthSectionPanel
-                section={healthSection}
-                saving={healthSaving}
-                onSave={async (nextSection) => {
-                  setHealthSaving(true);
-                  const res = await apiAdminSaveHealthSection(nextSection);
-                  setHealthSaving(false);
-                  if (!res.ok) {
-                    say(res.error);
-                    return;
-                  }
-                  setHealthSection(res.data as HealthSectionPayload);
-                  await refreshAdminState();
-                  say('Rubrique Santé enregistrée et publiée sur le site public.');
-                }}
-              />
-            )}
-
-            {page === 'Abonnements' && (
-              <>
-                <SectionTitle
-                  eyebrow="OFFRE & RÉFÉRENTIEL · FINANCES"
-                  title="Abonnements & paiements"
-                  desc="Suivez les formules actives, les revenus confirmés, les paiements en attente et les essais gratuits."
-                  icon={<ModernCreditCardPlanIcon size={24} />}
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Abonnements', label: 'Paiements & Abonnements', count: pendingPaymentsList.length },
-                    { id: 'Formules', label: 'Grille tarifaire (Formules)', count: data.plans.length },
-                  ]}
-                />
-                <div className="metric-grid">
-                  <Metric title="Revenu confirmé" value={money(confirmedRevenue)} detail="Transactions validées" icon={ModernCreditCardPlanIcon} />
-                  <Metric title="Paiements à confirmer" value={String(pendingPaymentsList.length)} detail="Vérification prestataire requise" icon={ModernEmergency24Icon} />
-                  <Metric title="Pharmacies Premium" value={String(data.pharmacies.filter(p => p.subscription === 'Premium').length)} detail="Formule enregistrée" icon={ModernSparkleCrownIcon} />
-                  <Metric title="Essais gratuits actifs" value={String(data.pharmacies.filter(p => p.status === 'Validée' && !p.subscriptionEndsAt && p.trialEndsAt && new Date(p.trialEndsAt).getTime() > Date.now()).length)} detail="Période de 14 jours" icon={ModernVerifiedShieldIcon} />
-                </div>
-                <div className="admin-filter-row">
-                  {['Tous', 'En attente', 'Confirmé', 'Échoué'].map(st => (
-                    <button
-                      key={st}
-                      type="button"
-                      className={paymentStatusFilter === st ? 'active' : ''}
-                      onClick={() => setPaymentStatusFilter(st)}
-                    >
-                      {st} ({st === 'Tous' ? data.payments.length : data.payments.filter(p => p.status === st).length})
-                    </button>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel">
-                  <PaymentsTable
-                    payments={data.payments.filter(p => paymentStatusFilter === 'Tous' || p.status === paymentStatusFilter)}
-                    admin
-                    onStatus={paymentStatus}
-                    pharmacies={data.pharmacies}
+              {page === 'Badges' && (
+                <>
+                  <SectionTitle
+                    eyebrow="OFFRE & RÉFÉRENTIEL · DISTINCTIONS"
+                    title="Badges & distinctions"
+                    desc="Créez, configurez et attribuez des badges officiels aux fiches pharmacies vérifiées."
+                    icon={<ModernMetricAwardIcon size={24} />}
+                    action={
+                      <button type="button" className="primary-btn" onClick={() => {
+                        setEditingBadge(null);
+                        setBadgeForm({ name: '', description: '', color: 'mint', icon: 'shield', expiryDays: '', visible: true });
+                        setModal('badge');
+                      }}><Plus size={15} /> Créer un badge</button>
+                    }
                   />
-                </section>
-                <div className="info-note">
-                  <ModernVerifiedShieldIcon size={17} /> La confirmation automatique provient du webhook signé de la passerelle Mobile Money. La validation manuelle est enregistrée dans le journal d’audit.
-                </div>
-              </>
-            )}
-
-            {page === 'Formules' && (
-              <>
-                <SectionTitle
-                  eyebrow="OFFRE & RÉFÉRENTIEL · TARIFICATION"
-                  title="Gestion des formules"
-                  desc="Définissez les tarifs officiels (FCFA) appliqués lors de chaque demande de paiement."
-                  icon={<ModernSparkleCrownIcon size={24} />}
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Abonnements', label: 'Paiements & Abonnements', count: pendingPaymentsList.length },
-                    { id: 'Formules', label: 'Grille tarifaire (Formules)', count: data.plans.length },
-                  ]}
-                />
-                <div className="pricing-grid">
-                  {data.plans.map(p => {
-                    const draft = planDrafts[p.name] || {
-                      monthly: String(p.monthly),
-                      quarterly: String(p.quarterly),
-                      yearly: String(p.yearly),
-                      description: p.description,
-                      features: p.features.join('\n'),
-                    };
-                    const updateDraft = (patch: Partial<typeof draft>) => {
-                      setPlanDrafts(prev => ({ ...prev, [p.name]: { ...draft, ...patch } }));
-                    };
-                    return (
-                      <div className="price-card cg-price-card-modern pc-adm-plan-card" key={p.name}>
-                        <div className="pc-adm-plan-head">
-                          <div>
-                            <div className="eyebrow">FORMULE</div>
-                            <h2>{p.name}</h2>
-                          </div>
-                          <span className="pc-role-chip">{money(Number(draft.monthly) || 0)}/mois</span>
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Catégories plateforme', label: 'Catégories officielles', count: data.platformCategories.length },
+                      { id: 'Badges', label: 'Badges & Distinctions', count: data.badges.length },
+                    ]}
+                  />
+                  <div className="badge-admin-grid">
+                    {data.badges.map(b => (
+                      <div className="panel cg-modern-panel badge-admin-card pc-adm-badge-card" key={b.id}>
+                        <div className="pc-adm-badge-top">
+                          <span className={`badge-emblem ${b.color}`}><BadgeGlyph icon={b.icon} size={23} /></span>
+                          <Status>{b.visible ? 'Publié' : 'Masqué'}</Status>
                         </div>
-                        <label>Mensuel (FCFA)<input type="number" min="0" value={draft.monthly} onChange={e => updateDraft({ monthly: e.target.value })} /></label>
-                        <label>Trimestriel (FCFA)<input type="number" min="0" value={draft.quarterly} onChange={e => updateDraft({ quarterly: e.target.value })} /></label>
-                        <label>Annuel (FCFA)<input type="number" min="0" value={draft.yearly} onChange={e => updateDraft({ yearly: e.target.value })} /></label>
-                        <label>Description<textarea value={draft.description} onChange={e => updateDraft({ description: e.target.value })} /></label>
-                        <label>Fonctionnalités (une par ligne)<textarea rows={5} value={draft.features} onChange={e => updateDraft({ features: e.target.value })} /></label>
-                        <button
-                          type="button"
-                          className="primary-btn"
-                          style={{ marginTop: 12, width: '100%', justifyContent: 'center' }}
-                          onClick={async () => {
-                            const monthly = Number(draft.monthly);
-                            const quarterly = Number(draft.quarterly);
-                            const yearly = Number(draft.yearly);
-                            if (!Number.isFinite(monthly) || monthly < 0 || !Number.isFinite(quarterly) || quarterly < 0 || !Number.isFinite(yearly) || yearly < 0) {
-                              say('Les tarifs doivent être des montants valides (>= 0).');
-                              return;
-                            }
-                            const res = await apiAdminUpdatePlan(p.name, {
-                              monthly,
-                              quarterly,
-                              yearly,
-                              description: draft.description.trim(),
-                              features: draft.features.split('\n').map(v => v.trim()).filter(Boolean),
-                            });
-                            if (!res.ok) {
-                              say(res.error);
-                              return;
-                            }
-                            await refreshAdminState();
-                            say(`Formule ${p.name} enregistrée.`);
-                          }}
-                        >
-                          Enregistrer {p.name}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            {page === 'Signalements' && (
-              <>
-                <SectionTitle
-                  eyebrow="VIGILANCE & SYSTÈME · QUALITÉ"
-                  title="Signalements"
-                  desc="Traitez les signalements portant sur un établissement ou des informations publiées."
-                  icon={<ModernAlertWarningIcon size={24} />}
-                />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Signalements', label: 'Signalements publics', count: openReportsList.length },
-                    { id: 'Messages contact', label: 'Messages de contact', count: openContactsCount },
-                  ]}
-                />
-                <div className="admin-filter-row">
-                  {['Tous', 'À traiter', 'En cours', 'Résolu', 'Rejeté'].map(s => (
-                    <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
-                      {s} ({s === 'Tous' ? data.reports.length : data.reports.filter(r => r.status === s).length})
-                    </button>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel">
-                  <div className="pc-adm-card-stack">
-                    {data.reports.filter(r => adminTab === 'Tous' || r.status === adminTab).map(r => (
-                      <div className="pc-adm-ticket-card" key={r.id}>
-                        <div className="pc-adm-ticket-main">
-                          <div className="pc-adm-ticket-head">
-                            <b>{r.target}</b>
-                            <Status>{r.status}</Status>
-                          </div>
-                          <small className="pc-adm-ticket-meta">{r.reason} · {r.date}</small>
-                          <p>{r.details || 'Aucun détail supplémentaire.'}</p>
-                        </div>
-                        <div className="table-actions">
+                        <b>{b.name}</b>
+                        <p>{b.description || 'Badge distinctif officiel PharmaConnect.'}</p>
+                        <small>{b.expiryDays ? `Durée indicative : ${b.expiryDays} jours` : 'Permanent / Sans expiration'}</small>
+                        <div className="pc-adm-badge-actions">
                           <ActionMenu
-                            label={`Actions signalement ${r.id}`}
+                            label={`Actions pour ${b.name}`}
                             items={[
                               {
-                                key: 'in-progress',
-                                label: 'Prendre en charge',
-                                icon: <Play size={14} />,
-                                onClick: async () => {
-                                  const res = await apiAdminUpdateReportStatus(r.id, 'En cours');
-                                  if (!res.ok) { say(res.error); return; }
-                                  await refreshAdminState();
-                                  say('Signalement pris en charge.');
+                                key: 'edit',
+                                label: 'Modifier le badge',
+                                icon: <Pencil size={14} />,
+                                onClick: () => {
+                                  setEditingBadge(b);
+                                  setBadgeForm({ name: b.name, description: b.description, color: b.color, icon: b.icon, expiryDays: b.expiryDays ? String(b.expiryDays) : '', visible: b.visible });
+                                  setModal('badge');
                                 },
                               },
-                              {
-                                key: 'resolve',
-                                label: 'Marquer résolu',
-                                icon: <Check size={14} />,
-                                variant: 'success',
+                              ...(!b.system ? [{
+                                key: 'toggle-visibility',
+                                label: b.visible ? 'Masquer sur les fiches' : 'Afficher sur les fiches',
+                                icon: b.visible ? <EyeOff size={14} /> : <Eye size={14} />,
                                 onClick: async () => {
-                                  const res = await apiAdminUpdateReportStatus(r.id, 'Résolu');
+                                  const res = await apiAdminSaveBadge(b.id, {
+                                    name: b.name,
+                                    description: b.description,
+                                    color: b.color,
+                                    icon: b.icon,
+                                    visible: !b.visible,
+                                    expiryDays: b.expiryDays ?? null,
+                                  });
                                   if (!res.ok) { say(res.error); return; }
                                   await refreshAdminState();
-                                  say('Signalement marqué résolu.');
+                                  say(b.visible ? 'Badge masqué.' : 'Badge affiché.');
                                 },
-                              },
-                              {
-                                key: 'reject',
-                                label: 'Rejeter',
-                                icon: <X size={14} />,
-                                variant: 'danger',
-                                onClick: async () => {
-                                  const res = await apiAdminUpdateReportStatus(r.id, 'Rejeté');
-                                  if (!res.ok) { say(res.error); return; }
-                                  await refreshAdminState();
-                                  say('Signalement rejeté.');
-                                },
-                              },
+                              }] : []),
                               {
                                 key: 'delete',
                                 label: 'Supprimer',
                                 icon: <Trash2 size={14} />,
                                 variant: 'danger',
                                 dividerBefore: true,
-                                onClick: async () => {
-                                  if (!window.confirm('Supprimer définitivement ce signalement ?')) return;
-                                  const res = await apiAdminDeleteReport(r.id);
-                                  if (!res.ok) { say(res.error); return; }
-                                  await refreshAdminState();
-                                  say('Signalement supprimé.');
+                                onClick: () => {
+                                  if (b.system) {
+                                    say('Le badge de vérification est obligatoire et ne peut pas être supprimé.');
+                                    return;
+                                  }
+                                  setDangerConfirm({
+                                    title: 'Supprimer le badge',
+                                    message: `Supprimer définitivement le badge « ${b.name} » ?`,
+                                    confirmLabel: 'Supprimer le badge',
+                                    action: async () => {
+                                      const res = await apiAdminDeleteBadge(b.id);
+                                      if (!res.ok) {
+                                        say(res.error);
+                                        return;
+                                      }
+                                      await refreshAdminState();
+                                      say('Badge supprimé.');
+                                    },
+                                  });
                                 },
                               },
                             ]}
@@ -1478,89 +1285,284 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ))}
-                    {data.reports.filter(r => adminTab === 'Tous' || r.status === adminTab).length === 0 && (
-                      <Empty title="Aucun signalement dans cette catégorie" detail="Les visiteurs peuvent signaler une information depuis les fiches publiques." />
-                    )}
                   </div>
-                </section>
-              </>
-            )}
+                  <section className="panel cg-modern-panel" style={{ marginTop: 18 }}>
+                    <div className="panel-heading">
+                      <div>
+                        <h3>Attribution des badges par officine</h3>
+                        <p>La vérification administrative reste indépendante de la formule d’abonnement.</p>
+                      </div>
+                      <label className="search-box" style={{ maxWidth: 300, minWidth: 200 }}>
+                        <ModernSearchMedicineIcon size={16} />
+                        <input
+                          value={badgePharmacyQuery}
+                          onChange={e => setBadgePharmacyQuery(e.target.value)}
+                          placeholder="Filtrer une pharmacie…"
+                        />
+                      </label>
+                    </div>
+                  {filteredBadgePharmacies.map(p => (
+                    <div className="assign-badges-row" key={p.id}>
+                      <div><b>{p.name}</b><small>{p.city} · {p.status}</small></div>
+                      <div className="assign-options">
+                        {data.badges.map(b => {
+                          const assigned = p.badgeIds.includes(b.id);
+                          const assignedAt = p.badgeAssignedAt?.[String(b.id)];
+                          const active = assigned ? isBadgeActive(p, b) : true;
+                          const assignedDateStr = assignedAt ? new Date(assignedAt).toLocaleDateString('fr-FR') : null;
+                          const expiresDateStr = assignedAt && b.expiryDays
+                            ? new Date(new Date(assignedAt).getTime() + b.expiryDays * 86400000).toLocaleDateString('fr-FR')
+                            : null;
+                          const disableSystemToggle = Boolean(b.system);
+                          return (
+                            <label key={b.id} className="pc-assign-badge-item">
+                              <span className="pc-assign-badge-check">
+                                <input
+                                  type="checkbox"
+                                  checked={assigned}
+                                  disabled={disableSystemToggle}
+                                  onChange={e => setPharmacyBadge(p.id, b.id, e.target.checked)}
+                                />
+                                <span>{b.name}</span>
+                              </span>
+                              {assigned && (
+                                <small className={active ? 'pc-badge-date-meta' : 'pc-badge-expired-tag'}>
+                                  {!active && expiresDateStr
+                                    ? `Expiré le ${expiresDateStr}`
+                                    : assignedDateStr
+                                      ? `Attribué ${assignedDateStr}${expiresDateStr ? ` · Exp. ${expiresDateStr}` : ''}`
+                                      : 'Actif'}
+                                </small>
+                              )}
+                            </label>
+                          );
+                        })}
+                        </div>
+                      </div>
+                    ))}
+                    {filteredBadgePharmacies.length === 0 && (
+                      <Empty title="Aucune pharmacie trouvée" detail="Ajustez votre recherche d’établissement." />
+                    )}
+                  </section>
+                </>
+              )}
 
-            {page === 'Messages contact' && (
-              <>
-                <SectionTitle
-                  eyebrow="VIGILANCE & SYSTÈME · SUPPORT"
-                  title="Messages de contact"
-                  desc="Consultez et traitez les demandes envoyées depuis la page Contact publique."
-                  icon={<ModernChatEncryptedIcon size={24} />}
-                  action={
-                    <button type="button" className="outline-btn" onClick={async () => {
-                      const list = await apiAdminContacts();
-                      setContacts(list);
-                      say('Messages de contact actualisés.');
-                    }}><RefreshCw size={15} /> Actualiser</button>
-                  }
+              {page === 'Rubrique Santé' && (
+                <AdminHealthSectionPanel
+                  section={healthSection}
+                  saving={healthSaving}
+                  onSave={async (nextSection) => {
+                    setHealthSaving(true);
+                    const res = await apiAdminSaveHealthSection(nextSection);
+                    setHealthSaving(false);
+                    if (!res.ok) {
+                      say(res.error);
+                      return false;
+                    }
+                    setHealthSection(res.data as HealthSectionPayload);
+                    await refreshAdminState();
+                    say('Rubrique Santé enregistrée et publiée sur le site public.');
+                    return true;
+                  }}
                 />
-                <PoleSubNav
-                  activePage={page}
-                  onSelect={go}
-                  tabs={[
-                    { id: 'Signalements', label: 'Signalements publics', count: openReportsList.length },
-                    { id: 'Messages contact', label: 'Messages de contact', count: openContactsCount },
-                  ]}
-                />
-                <div className="admin-filter-row">
-                  {['Tous', 'Nouveau', 'En cours', 'Traité', 'Archivé'].map(s => (
-                    <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
-                      {s} ({s === 'Tous' ? contacts.length : contacts.filter(c => c.status === s).length})
-                    </button>
-                  ))}
-                </div>
-                <section className="panel cg-modern-panel">
-                  <div className="pc-adm-card-stack">
-                    {contacts
-                      .filter(c => adminTab === 'Tous' || c.status === adminTab)
-                      .map(c => (
-                        <div className="pc-adm-ticket-card" key={c.id}>
+              )}
+
+              {page === 'Abonnements' && (
+                <>
+                  <SectionTitle
+                    eyebrow="OFFRE & RÉFÉRENTIEL · FINANCES"
+                    title="Abonnements & paiements"
+                    desc="Suivez les formules actives, les revenus confirmés, les paiements en attente et les essais gratuits."
+                    icon={<ModernCreditCardPlanIcon size={24} />}
+                  />
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Abonnements', label: 'Paiements & Abonnements', count: pendingPaymentsList.length },
+                      { id: 'Formules', label: 'Grille tarifaire (Formules)', count: data.plans.length },
+                    ]}
+                  />
+                  <div className="metric-grid">
+                    <Metric title="Revenu confirmé" value={money(confirmedRevenue)} detail="Transactions validées" icon={ModernCreditCardPlanIcon} />
+                    <Metric title="Paiements à confirmer" value={String(pendingPaymentsList.length)} detail="Vérification prestataire requise" icon={ModernEmergency24Icon} />
+                    <Metric title="Pharmacies Premium" value={String(data.pharmacies.filter(p => p.subscription === 'Premium').length)} detail="Formule enregistrée" icon={ModernSparkleCrownIcon} />
+                    <Metric title="Essais gratuits actifs" value={String(data.pharmacies.filter(p => p.status === 'Validée' && !p.subscriptionEndsAt && p.trialEndsAt && new Date(p.trialEndsAt).getTime() > Date.now()).length)} detail="Période de 14 jours" icon={ModernVerifiedShieldIcon} />
+                  </div>
+                  <div className="admin-filter-row">
+                    {['Tous', 'En attente', 'Confirmé', 'Échoué'].map(st => (
+                      <button
+                        key={st}
+                        type="button"
+                        className={paymentStatusFilter === st ? 'active' : ''}
+                        onClick={() => setPaymentStatusFilter(st)}
+                      >
+                        {st} ({st === 'Tous' ? data.payments.length : data.payments.filter(p => p.status === st).length})
+                      </button>
+                    ))}
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <PaymentsTable
+                      payments={data.payments.filter(p => paymentStatusFilter === 'Tous' || p.status === paymentStatusFilter)}
+                      admin
+                      onStatus={paymentStatus}
+                      pharmacies={data.pharmacies}
+                    />
+                  </section>
+                  <div className="info-note">
+                    <ModernVerifiedShieldIcon size={17} /> La confirmation automatique provient du webhook signé de la passerelle Mobile Money. La validation manuelle est enregistrée dans le journal d’audit.
+                  </div>
+                </>
+              )}
+
+              {page === 'Formules' && (
+                <>
+                  <SectionTitle
+                    eyebrow="OFFRE & RÉFÉRENTIEL · TARIFICATION"
+                    title="Gestion des formules"
+                    desc="Définissez les tarifs officiels (FCFA) appliqués lors de chaque demande de paiement."
+                    icon={<ModernSparkleCrownIcon size={24} />}
+                  />
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Abonnements', label: 'Paiements & Abonnements', count: pendingPaymentsList.length },
+                      { id: 'Formules', label: 'Grille tarifaire (Formules)', count: data.plans.length },
+                    ]}
+                  />
+                  <div className="pricing-grid">
+                    {data.plans.map(p => {
+                      const isSavingThis = savingPlan === p.name;
+                      const draft = planDrafts[p.name] || {
+                        monthly: String(p.monthly),
+                        quarterly: String(p.quarterly),
+                        yearly: String(p.yearly),
+                        description: p.description,
+                        features: p.features.join('\n'),
+                      };
+                      const updateDraft = (patch: Partial<typeof draft>) => {
+                        setPlanDrafts(prev => ({ ...prev, [p.name]: { ...draft, ...patch } }));
+                      };
+                      return (
+                        <div className="price-card cg-price-card-modern pc-adm-plan-card" key={p.name}>
+                          <div className="pc-adm-plan-head">
+                            <div>
+                              <div className="eyebrow">FORMULE</div>
+                              <h2>{p.name}</h2>
+                            </div>
+                            <span className="pc-role-chip">{money(Number(draft.monthly) || 0)}/mois</span>
+                          </div>
+                        <label>Mensuel (FCFA)<input type="number" min="1" disabled={isSavingThis} value={draft.monthly} onChange={e => updateDraft({ monthly: e.target.value })} /></label>
+                        <label>Trimestriel (FCFA)<input type="number" min="1" disabled={isSavingThis} value={draft.quarterly} onChange={e => updateDraft({ quarterly: e.target.value })} /></label>
+                        <label>Annuel (FCFA)<input type="number" min="1" disabled={isSavingThis} value={draft.yearly} onChange={e => updateDraft({ yearly: e.target.value })} /></label>
+                        <label>Description<textarea disabled={isSavingThis} value={draft.description} onChange={e => updateDraft({ description: e.target.value })} /></label>
+                        <label>Fonctionnalités (une par ligne)<textarea rows={5} disabled={isSavingThis} value={draft.features} onChange={e => updateDraft({ features: e.target.value })} /></label>
+                        <button
+                          type="button"
+                          className="primary-btn"
+                          disabled={isSavingThis}
+                          style={{ marginTop: 12, width: '100%', justifyContent: 'center' }}
+                          onClick={async () => {
+                            const monthly = Number(draft.monthly);
+                            const quarterly = Number(draft.quarterly);
+                            const yearly = Number(draft.yearly);
+                            if (!Number.isFinite(monthly) || monthly < 1 || !Number.isFinite(quarterly) || quarterly < 1 || !Number.isFinite(yearly) || yearly < 1) {
+                              say('Les tarifs doivent être des montants valides (>= 1 FCFA).');
+                              return;
+                            }
+                            setSavingPlan(p.name);
+                            try {
+                              const res = await apiAdminUpdatePlan(p.name, {
+                                monthly,
+                                quarterly,
+                                yearly,
+                                description: draft.description.trim(),
+                                features: draft.features.split('\n').map(v => v.trim()).filter(Boolean),
+                              });
+                              if (!res.ok) {
+                                say(res.error);
+                                return;
+                              }
+                              await refreshAdminState();
+                              say(`Formule ${p.name} enregistrée.`);
+                            } finally {
+                              setSavingPlan(null);
+                            }
+                          }}
+                        >
+                          {isSavingThis ? 'Enregistrement…' : `Enregistrer ${p.name}`}
+                        </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {page === 'Signalements' && (
+                <>
+                  <SectionTitle
+                    eyebrow="VIGILANCE & SYSTÈME · QUALITÉ"
+                    title="Signalements"
+                    desc="Traitez les signalements portant sur un établissement ou des informations publiées."
+                    icon={<ModernAlertWarningIcon size={24} />}
+                  />
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Signalements', label: 'Signalements publics', count: openReportsList.length },
+                      { id: 'Messages contact', label: 'Messages de contact', count: openContactsCount },
+                    ]}
+                  />
+                  <div className="admin-filter-row">
+                    {['Tous', 'À traiter', 'En cours', 'Résolu', 'Rejeté'].map(s => (
+                      <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
+                        {s} ({s === 'Tous' ? data.reports.length : data.reports.filter(r => r.status === s).length})
+                      </button>
+                    ))}
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <div className="pc-adm-card-stack">
+                      {data.reports.filter(r => adminTab === 'Tous' || r.status === adminTab).map(r => (
+                        <div className="pc-adm-ticket-card" key={r.id}>
                           <div className="pc-adm-ticket-main">
                             <div className="pc-adm-ticket-head">
-                              <b>{c.topic}</b>
-                              <Status>{c.status}</Status>
+                              <b>{r.target}</b>
+                              <Status>{r.status}</Status>
                             </div>
-                            <small className="pc-adm-ticket-meta">
-                              {c.name} · {c.email} · {new Date(c.date).toLocaleString('fr-FR')}
-                            </small>
-                            <p>{c.message}</p>
-                            <input
-                              type="text"
-                              className="pc-adm-note-input"
-                              value={contactNotes[c.id] ?? c.adminNote ?? ''}
-                              onChange={e => setContactNotes(prev => ({ ...prev, [c.id]: e.target.value }))}
-                              placeholder="Ajouter une note interne de suivi…"
-                            />
+                            <small className="pc-adm-ticket-meta">{r.reason} · {r.date}</small>
+                            <p>{r.details || 'Aucun détail supplémentaire.'}</p>
                           </div>
                           <div className="table-actions">
                             <ActionMenu
-                              label={`Actions message ${c.id}`}
+                              label={`Actions signalement ${r.id}`}
                               items={[
                                 {
                                   key: 'in-progress',
-                                  label: 'En cours',
+                                  label: 'Prendre en charge',
                                   icon: <Play size={14} />,
-                                  onClick: () => updateContactStatus(c.id, 'En cours'),
+                                  onClick: async () => {
+                                    const res = await apiAdminUpdateReportStatus(r.id, 'En cours');
+                                    if (!res.ok) { say(res.error); return; }
+                                    await refreshAdminState();
+                                    say('Signalement pris en charge.');
+                                  },
                                 },
                                 {
-                                  key: 'done',
-                                  label: 'Marquer traité',
+                                  key: 'resolve',
+                                  label: 'Marquer résolu',
                                   icon: <Check size={14} />,
                                   variant: 'success',
-                                  onClick: () => updateContactStatus(c.id, 'Traité'),
+                                  onClick: () => setReportDecision({ report: r, status: 'Résolu', note: '' }),
                                 },
                                 {
-                                  key: 'archive',
-                                  label: 'Archiver',
-                                  icon: <Archive size={14} />,
-                                  onClick: () => updateContactStatus(c.id, 'Archivé'),
+                                  key: 'reject',
+                                  label: 'Rejeter',
+                                  icon: <X size={14} />,
+                                  variant: 'danger',
+                                  onClick: () => setReportDecision({ report: r, status: 'Rejeté', note: '' }),
                                 },
                                 {
                                   key: 'delete',
@@ -1568,208 +1570,319 @@ export default function AdminPage() {
                                   icon: <Trash2 size={14} />,
                                   variant: 'danger',
                                   dividerBefore: true,
-                                  onClick: async () => {
-                                    if (!window.confirm('Supprimer définitivement ce message de contact ?')) return;
-                                    const res = await apiAdminDeleteContact(c.id);
-                                    if (!res.ok) { say(res.error); return; }
-                                    setContacts(prev => prev.filter(item => item.id !== c.id));
-                                    say('Message de contact supprimé.');
-                                  },
+                                  onClick: () => setDangerConfirm({
+                                    title: 'Supprimer le signalement',
+                                    message: `Supprimer définitivement le signalement sur « ${r.target} » ?`,
+                                    confirmLabel: 'Supprimer',
+                                    action: async () => {
+                                      const res = await apiAdminDeleteReport(r.id);
+                                      if (!res.ok) { say(res.error); return; }
+                                      await refreshAdminState();
+                                      say('Signalement supprimé.');
+                                    },
+                                  }),
                                 },
                               ]}
                             />
                           </div>
                         </div>
                       ))}
-                    {contacts.filter(c => adminTab === 'Tous' || c.status === adminTab).length === 0 && (
-                      <Empty title="Aucun message de contact" detail="Les messages soumis depuis la page Contact publique apparaîtront ici." />
-                    )}
-                  </div>
-                </section>
-              </>
-            )}
-
-            {page === 'Journal d’activité' && (
-              <>
-                <SectionTitle
-                  eyebrow="VIGILANCE & SYSTÈME · TRAÇABILITÉ"
-                  title="Journal d’activité"
-                  desc="Historique des opérations administratives, officines, utilisateurs et paiements sur la plateforme."
-                  icon={<ModernClipboardStockIcon size={24} />}
-                  action={
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="outline-btn"
-                        onClick={() => {
-                          const header = 'date,actor,action,entity,entityId';
-                          const rows = combinedAuditLogs.map(l =>
-                            [l.date, l.actor, l.action, l.entity, l.entityId ?? '']
-                              .map(v => `"${String(v).replace(/"/g, '""')}"`)
-                              .join(','),
-                          );
-                          const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = 'pharmaconnect-audit-logs.csv';
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
-                      >
-                        <Download size={15} /> Exporter CSV
-                      </button>
-                      <button
-                        type="button"
-                        className="outline-btn"
-                        onClick={() => {
-                          const blob = new Blob([JSON.stringify(combinedAuditLogs, null, 2)], { type: 'application/json' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = 'pharmaconnect-audit-logs.json';
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
-                      >
-                        <ModernUploadCloudIcon size={16} /> Exporter JSON
-                      </button>
-                    </div>
-                  }
-                />
-                <div className="toolbar">
-                  <label className="search-box">
-                    <ModernSearchMedicineIcon size={17} />
-                    <input value={auditQuery} onChange={e => setAuditQuery(e.target.value)} placeholder="Filtrer le journal par action, entité ou ID…" />
-                  </label>
-                  <select value={auditActorFilter} onChange={e => setAuditActorFilter(e.target.value)}>
-                    <option value="Tous">Tous les acteurs</option>
-                    <option value="Administration">Administration</option>
-                    <option value="Pharmacie">Pharmacie</option>
-                    <option value="Passerelle Paiement">Passerelle Paiement</option>
-                    <option value="Système">Système</option>
-                    <option value="Visiteur">Visiteur</option>
-                  </select>
-                </div>
-                <section className="panel cg-modern-panel">
-                  <div className="table-scroll">
-                    <table className="data-table">
-                      <thead>
-                        <tr><th>DATE</th><th>AUTEUR</th><th>ACTION</th><th>ÉLÉMENT</th><th>IDENTIFIANT</th></tr>
-                      </thead>
-                      <tbody>
-                        {combinedAuditLogs.map(l => (
-                          <tr key={l.id}>
-                            <td>{new Date(l.date).toString() === 'Invalid Date' ? l.date : new Date(l.date).toLocaleString('fr-FR')}</td>
-                            <td><b>{l.actor}</b></td>
-                            <td>{l.action}</td>
-                            <td>{l.entity}</td>
-                            <td>{l.entityId || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {combinedAuditLogs.length === 0 && <Empty title="Aucune opération tracée" detail="Les actions d’administration et des pharmacies alimentent ce journal." />}
-                  </div>
-                </section>
-              </>
-            )}
-
-            {page === 'Paramètres plateforme' && (
-              <>
-                <SectionTitle
-                  eyebrow="VIGILANCE & SYSTÈME · CONFIGURATION"
-                  title="Paramètres généraux"
-                  desc="Réglages transversaux de publication, annonce officielle et support de la plateforme PharmaConnect."
-                  icon={<ModernSettingsGearIcon size={24} />}
-                />
-                <div className="pc-adm-split-grid">
-                  <section className="panel cg-modern-panel">
-                    <h3>Fraîcheur, annonce & contacts support</h3>
-                    <p className="muted" style={{ marginBottom: 14 }}>
-                      Délai maximal après lequel un prix ou stock non actualisé est masqué du catalogue public, et coordonnées officielles.
-                    </p>
-                    <label className="form-field">
-                      Seuil de fraîcheur des stocks (jours)
-                      <input type="number" min="1" max="365" value={freshness} onChange={e => setFreshness(e.target.value)} />
-                    </label>
-                    <label className="form-field">
-                      Message d’information plateforme (optionnel)
-                      <input type="text" maxLength={280} value={platformBanner} onChange={e => setPlatformBanner(e.target.value)} placeholder="Ex. Permanence sanitaire de week-end activée." />
-                    </label>
-                    {platformBanner.trim() && (
-                      <div className="pc-adm-banner-preview">
-                        <ModernBellAlertIcon size={16} />
-                        <div>
-                          <small>Aperçu bannière publique</small>
-                          <b>{platformBanner.trim()}</b>
-                        </div>
-                      </div>
-                    )}
-                    <div className="form-grid" style={{ marginTop: 10 }}>
-                      <label>
-                        Téléphone support
-                        <input type="text" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} />
-                      </label>
-                      <label>
-                        E-mail officiel
-                        <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} />
-                      </label>
-                    </div>
-                    <button
-                      type="button"
-                      className="primary-btn"
-                      style={{ marginTop: 14 }}
-                      onClick={async () => {
-                        const days = Math.min(Math.max(Math.trunc(Number(freshness) || 7), 1), 365);
-                        setFreshness(String(days));
-                        const res = await apiAdminUpdateSettings({
-                          freshnessDays: days,
-                          platformBanner: platformBanner.trim(),
-                          supportPhone: supportPhone.trim(),
-                          supportEmail: supportEmail.trim(),
-                        });
-                        if (!res.ok) {
-                          say(res.error);
-                          return;
-                        }
-                        await refreshAdminState();
-                        say('Paramètres plateforme enregistrés.');
-                      }}
-                    >
-                      Enregistrer la configuration
-                    </button>
-                    <div className="info-note" style={{ marginTop: 12 }}>
-                      <ModernAlertWarningIcon size={16} /> Seuil de fraîcheur actif : {data.freshnessDays} jours.
+                      {data.reports.filter(r => adminTab === 'Tous' || r.status === adminTab).length === 0 && (
+                        <Empty title="Aucun signalement dans cette catégorie" detail="Les visiteurs peuvent signaler une information depuis les fiches publiques." />
+                      )}
                     </div>
                   </section>
+                </>
+              )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <section className="panel cg-modern-panel">
-                      <h3>Règles de publication actives</h3>
-                      <RuleRow title="Validation obligatoire des pharmacies" detail="Un établissement non validé n’apparaît pas dans l’annuaire public." />
-                      <RuleRow title="Validation obligatoire des produits" detail="Un produit non approuvé reste invisible au public." />
-                      <RuleRow title="Masquer les pharmacies à abonnement expiré" detail="La vitrine publique est désactivée jusqu’au renouvellement." />
-                      <RuleRow title="Comptes visiteurs facultatifs" detail="La consultation publique et la prise de contact restent accessibles sans compte." />
-                      <RuleRow title="Zéro transaction en ligne" detail="Les réservations, paiements ou livraisons de médicaments restent hors plateforme." />
-                    </section>
-
-                    <section className="panel cg-modern-panel">
-                      <h3>Synchronisation serveur</h3>
-                      <p className="muted" style={{ marginBottom: 12 }}>
-                        Recharge l’état officiel, les comptes, les messages et le journal directement depuis la base de données du backend.
-                      </p>
+              {page === 'Messages contact' && (
+                <>
+                  <SectionTitle
+                    eyebrow="VIGILANCE & SYSTÈME · SUPPORT"
+                    title="Messages de contact"
+                    desc="Consultez et traitez les demandes envoyées depuis la page Contact publique."
+                    icon={<ModernChatEncryptedIcon size={24} />}
+                    action={
                       <button type="button" className="outline-btn" onClick={async () => {
-                        const remote = await refreshAdminState(true);
-                        if (remote) say('Données synchronisées depuis le serveur.');
-                      }}>
-                        <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Actualiser depuis le serveur
+                        const list = await apiAdminContacts();
+                        setContacts(list);
+                        say('Messages de contact actualisés.');
+                      }}><RefreshCw size={15} /> Actualiser</button>
+                    }
+                  />
+                  <PoleSubNav
+                    activePage={page}
+                    onSelect={go}
+                    tabs={[
+                      { id: 'Signalements', label: 'Signalements publics', count: openReportsList.length },
+                      { id: 'Messages contact', label: 'Messages de contact', count: openContactsCount },
+                    ]}
+                  />
+                  <div className="admin-filter-row">
+                    {['Tous', 'Nouveau', 'En cours', 'Traité', 'Archivé'].map(s => (
+                      <button key={s} type="button" className={adminTab === s ? 'active' : ''} onClick={() => setAdminTab(s)}>
+                        {s} ({s === 'Tous' ? contacts.length : contacts.filter(c => c.status === s).length})
                       </button>
-                    </section>
+                    ))}
                   </div>
-                </div>
-              </>
-            )}
+                  <section className="panel cg-modern-panel">
+                    <div className="pc-adm-card-stack">
+                      {contacts
+                        .filter(c => adminTab === 'Tous' || c.status === adminTab)
+                        .map(c => (
+                          <div className="pc-adm-ticket-card" key={c.id}>
+                            <div className="pc-adm-ticket-main">
+                              <div className="pc-adm-ticket-head">
+                                <b>{c.topic}</b>
+                                <Status>{c.status}</Status>
+                              </div>
+                              <small className="pc-adm-ticket-meta">
+                                {c.name} · {c.email} · {new Date(c.date).toLocaleString('fr-FR')}
+                              </small>
+                              <p>{c.message}</p>
+                              <input
+                                type="text"
+                                className="pc-adm-note-input"
+                                value={contactNotes[c.id] ?? c.adminNote ?? ''}
+                                onChange={e => setContactNotes(prev => ({ ...prev, [c.id]: e.target.value }))}
+                                placeholder="Ajouter une note interne de suivi…"
+                              />
+                            </div>
+                            <div className="table-actions">
+                              <ActionMenu
+                                label={`Actions message ${c.id}`}
+                                items={[
+                                  {
+                                    key: 'in-progress',
+                                    label: 'En cours',
+                                    icon: <Play size={14} />,
+                                    onClick: () => updateContactStatus(c.id, 'En cours'),
+                                  },
+                                  {
+                                    key: 'done',
+                                    label: 'Marquer traité',
+                                    icon: <Check size={14} />,
+                                    variant: 'success',
+                                    onClick: () => updateContactStatus(c.id, 'Traité'),
+                                  },
+                                  {
+                                    key: 'archive',
+                                    label: 'Archiver',
+                                    icon: <Archive size={14} />,
+                                    onClick: () => updateContactStatus(c.id, 'Archivé'),
+                                  },
+                                  {
+                                    key: 'delete',
+                                    label: 'Supprimer',
+                                    icon: <Trash2 size={14} />,
+                                    variant: 'danger',
+                                    dividerBefore: true,
+                                    onClick: () => setDangerConfirm({
+                                      title: 'Supprimer le message de contact',
+                                      message: `Supprimer définitivement le message « ${c.topic} » (${c.email}) ?`,
+                                      confirmLabel: 'Supprimer',
+                                      action: async () => {
+                                        const res = await apiAdminDeleteContact(c.id);
+                                        if (!res.ok) { say(res.error); return; }
+                                        setContacts(prev => prev.filter(item => item.id !== c.id));
+                                        say('Message de contact supprimé.');
+                                      },
+                                    }),
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      {contacts.filter(c => adminTab === 'Tous' || c.status === adminTab).length === 0 && (
+                        <Empty title="Aucun message de contact" detail="Les messages soumis depuis la page Contact publique apparaîtront ici." />
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {page === 'Journal d’activité' && (
+                <>
+                  <SectionTitle
+                    eyebrow="VIGILANCE & SYSTÈME · TRAÇABILITÉ"
+                    title="Journal d’activité"
+                    desc="Historique des opérations administratives, officines, utilisateurs et paiements sur la plateforme."
+                    icon={<ModernClipboardStockIcon size={24} />}
+                    action={
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="outline-btn"
+                          onClick={() => {
+                            const header = 'date,actor,action,entity,entityId';
+                            const rows = combinedAuditLogs.map(l =>
+                              [l.date, l.actor, l.action, l.entity, l.entityId ?? '']
+                                .map(v => `"${String(v).replace(/"/g, '""')}"`)
+                                .join(','),
+                            );
+                            const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'pharmaconnect-audit-logs.csv';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download size={15} /> Exporter CSV
+                        </button>
+                        <button
+                          type="button"
+                          className="outline-btn"
+                          onClick={() => {
+                            const blob = new Blob([JSON.stringify(combinedAuditLogs, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'pharmaconnect-audit-logs.json';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <ModernUploadCloudIcon size={16} /> Exporter JSON
+                        </button>
+                      </div>
+                    }
+                  />
+                  <div className="toolbar">
+                    <label className="search-box">
+                      <ModernSearchMedicineIcon size={17} />
+                      <input value={auditQuery} onChange={e => setAuditQuery(e.target.value)} placeholder="Filtrer le journal par action, entité ou ID…" />
+                    </label>
+                    <select value={auditActorFilter} onChange={e => setAuditActorFilter(e.target.value)}>
+                      <option value="Tous">Tous les acteurs</option>
+                      <option value="Administration">Administration</option>
+                      <option value="Pharmacie">Pharmacie</option>
+                      <option value="Passerelle Paiement">Passerelle Paiement</option>
+                      <option value="Système">Système</option>
+                      <option value="Visiteur">Visiteur</option>
+                    </select>
+                  </div>
+                  <section className="panel cg-modern-panel">
+                    <div className="table-scroll">
+                      <table className="data-table">
+                        <thead>
+                          <tr><th>DATE</th><th>AUTEUR</th><th>ACTION</th><th>ÉLÉMENT</th><th>IDENTIFIANT</th></tr>
+                        </thead>
+                        <tbody>
+                          {combinedAuditLogs.map(l => (
+                            <tr key={l.id}>
+                              <td>{new Date(l.date).toString() === 'Invalid Date' ? l.date : new Date(l.date).toLocaleString('fr-FR')}</td>
+                              <td><b>{l.actor}</b></td>
+                              <td>{l.action}</td>
+                              <td>{l.entity}</td>
+                              <td>{l.entityId || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {combinedAuditLogs.length === 0 && <Empty title="Aucune opération tracée" detail="Les actions d’administration et des pharmacies alimentent ce journal." />}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {page === 'Paramètres plateforme' && (
+                <>
+                  <SectionTitle
+                    eyebrow="VIGILANCE & SYSTÈME · CONFIGURATION"
+                    title="Paramètres généraux"
+                    desc="Réglages transversaux de publication, annonce officielle et support de la plateforme PharmaConnect."
+                    icon={<ModernSettingsGearIcon size={24} />}
+                  />
+                  <div className="pc-adm-split-grid">
+                    <section className="panel cg-modern-panel">
+                      <h3>Fraîcheur, annonce & contacts support</h3>
+                      <p className="muted" style={{ marginBottom: 14 }}>
+                        Délai maximal après lequel un prix ou stock non actualisé est masqué du catalogue public, et coordonnées officielles.
+                      </p>
+                      <label className="form-field">
+                        Seuil de fraîcheur des stocks (jours)
+                        <input type="number" min="1" max="365" value={freshness} onChange={e => setFreshness(e.target.value)} />
+                      </label>
+                      <label className="form-field">
+                        Message d’information plateforme (optionnel)
+                        <input type="text" maxLength={280} value={platformBanner} onChange={e => setPlatformBanner(e.target.value)} placeholder="Ex. Permanence sanitaire de week-end activée." />
+                      </label>
+                      {platformBanner.trim() && (
+                        <div className="pc-adm-banner-preview">
+                          <ModernBellAlertIcon size={16} />
+                          <div>
+                            <small>Aperçu bannière publique</small>
+                            <b>{platformBanner.trim()}</b>
+                          </div>
+                        </div>
+                      )}
+                      <div className="form-grid" style={{ marginTop: 10 }}>
+                        <label>
+                          Téléphone support
+                          <input type="text" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} />
+                        </label>
+                        <label>
+                          E-mail officiel
+                          <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        style={{ marginTop: 14 }}
+                        onClick={async () => {
+                          const days = Math.min(Math.max(Math.trunc(Number(freshness) || 7), 1), 365);
+                          setFreshness(String(days));
+                          const res = await apiAdminUpdateSettings({
+                            freshnessDays: days,
+                            platformBanner: platformBanner.trim(),
+                            supportPhone: supportPhone.trim(),
+                            supportEmail: supportEmail.trim(),
+                          });
+                          if (!res.ok) {
+                            say(res.error);
+                            return;
+                          }
+                          await refreshAdminState();
+                          say('Paramètres plateforme enregistrés.');
+                        }}
+                      >
+                        Enregistrer la configuration
+                      </button>
+                      <div className="info-note" style={{ marginTop: 12 }}>
+                        <ModernAlertWarningIcon size={16} /> Seuil de fraîcheur actif : {data.freshnessDays} jours.
+                      </div>
+                    </section>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <section className="panel cg-modern-panel">
+                        <h3>Règles de publication actives</h3>
+                        <RuleRow title="Validation obligatoire des pharmacies" detail="Un établissement non validé n’apparaît pas dans l’annuaire public." />
+                        <RuleRow title="Validation obligatoire des produits" detail="Un produit non approuvé reste invisible au public." />
+                        <RuleRow title="Masquer les pharmacies à abonnement expiré" detail="La vitrine publique est désactivée jusqu’au renouvellement." />
+                        <RuleRow title="Comptes visiteurs facultatifs" detail="La consultation publique et la prise de contact restent accessibles sans compte." />
+                        <RuleRow title="Zéro transaction en ligne" detail="Les réservations, paiements ou livraisons de médicaments restent hors plateforme." />
+                      </section>
+
+                      <section className="panel cg-modern-panel">
+                        <h3>Synchronisation serveur</h3>
+                        <p className="muted" style={{ marginBottom: 12 }}>
+                          Recharge l’état officiel, les comptes, les messages et le journal directement depuis la base de données du backend.
+                        </p>
+                        <button type="button" className="outline-btn" onClick={async () => {
+                          const remote = await refreshAdminState(true);
+                          if (remote) say('Données synchronisées depuis le serveur.');
+                        }}>
+                          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Actualiser depuis le serveur
+                        </button>
+                      </section>
+                    </div>
+                  </div>
+                </>
+              )}
             </PageTransitionStage>
           </main>
         </div>
@@ -1786,6 +1899,38 @@ export default function AdminPage() {
         }}
       />
 
+      <AdminProductInspectModal
+        product={inspectedProduct}
+        pharmacies={data.pharmacies}
+        busy={productActionBusy}
+        onClose={() => { if (!productActionBusy) setInspectedProduct(null); }}
+        onApprove={p => productStatus(p.id, 'Publié')}
+        onModerate={(p, status) => {
+          setInspectedProduct(null);
+          setModerationTarget({ product: p, status, note: p.note || '' });
+        }}
+        onEdit={p => {
+          setInspectedProduct(null);
+          openEditProductModal(p);
+        }}
+      />
+
+      <ConfirmDangerModal
+        open={Boolean(dangerConfirm)}
+        title={dangerConfirm?.title || ''}
+        message={dangerConfirm?.message || ''}
+        confirmLabel={dangerConfirm?.confirmLabel || 'Confirmer'}
+        onClose={() => setDangerConfirm(null)}
+        onConfirm={async () => {
+          if (!dangerConfirm) return;
+          try {
+            await dangerConfirm.action();
+          } finally {
+            setDangerConfirm(null);
+          }
+        }}
+      />
+
       {pharmacyDecision && (
         <Modal
           title={`${pharmacyDecision.status === 'Refusée' ? 'Refuser' : 'Suspendre'} · ${pharmacyDecision.pharmacy.name}`}
@@ -1795,9 +1940,14 @@ export default function AdminPage() {
           <form
             onSubmit={async e => {
               e.preventDefault();
-              const target = pharmacyDecision;
-              setPharmacyDecision(null);
-              await executePharmacyStatus(target.pharmacy.id, target.status, target.note.trim() || undefined);
+              setPharmacyStatusBusy(true);
+              try {
+                const target = pharmacyDecision;
+                const ok = await executePharmacyStatus(target.pharmacy.id, target.status, target.note.trim() || undefined);
+                if (ok) setPharmacyDecision(null);
+              } finally {
+                setPharmacyStatusBusy(false);
+              }
             }}
           >
             <p className="muted" style={{ marginBottom: 12 }}>
@@ -1808,14 +1958,17 @@ export default function AdminPage() {
               <textarea
                 rows={3}
                 required
+                disabled={pharmacyStatusBusy}
                 value={pharmacyDecision.note}
                 onChange={e => setPharmacyDecision(prev => (prev ? { ...prev, note: e.target.value } : null))}
                 placeholder="Ex. Agrément ministériel illisible, numéro de licence expiré ou non-conformité des déclarations."
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setPharmacyDecision(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">Confirmer ({pharmacyDecision.status})</button>
+              <button type="button" className="outline-btn" disabled={pharmacyStatusBusy} onClick={() => setPharmacyDecision(null)}>Annuler</button>
+              <button type="submit" className="pc-danger-btn" disabled={pharmacyStatusBusy}>
+                {pharmacyStatusBusy ? 'Enregistrement…' : `Confirmer (${pharmacyDecision.status})`}
+              </button>
             </div>
           </form>
         </Modal>
@@ -1855,13 +2008,14 @@ export default function AdminPage() {
         <Modal
           title={`Modération : ${moderationTarget.status}`}
           icon={<ModernPackageBoxIcon size={20} />}
-          onClose={() => setModerationTarget(null)}
+          onClose={() => { if (!productActionBusy) setModerationTarget(null); }}
         >
           <form onSubmit={async e => {
             e.preventDefault();
+            if (productActionBusy) return;
             const target = moderationTarget;
-            setModerationTarget(null);
-            await productStatus(target.product.id, target.status, target.note.trim() || undefined);
+            const ok = await productStatus(target.product.id, target.status, target.note.trim() || undefined);
+            if (ok) setModerationTarget(null);
           }}>
             <p className="muted" style={{ marginBottom: 12 }}>
               Produit concerné : <b>{moderationTarget.product.name}</b>
@@ -1870,6 +2024,7 @@ export default function AdminPage() {
               Motif ou consigne envoyée à l’officine
               <textarea
                 rows={3}
+                disabled={productActionBusy}
                 required={moderationTarget.status === 'À corriger' || moderationTarget.status === 'Refusé'}
                 value={moderationTarget.note}
                 onChange={e => setModerationTarget(prev => prev ? { ...prev, note: e.target.value } : null)}
@@ -1877,8 +2032,71 @@ export default function AdminPage() {
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setModerationTarget(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">Confirmer ({moderationTarget.status})</button>
+              <button type="button" className="outline-btn" disabled={productActionBusy} onClick={() => setModerationTarget(null)}>Annuler</button>
+              <button
+                type="submit"
+                disabled={productActionBusy}
+                className={moderationTarget.status === 'Refusé' || moderationTarget.status === 'Suspendu' ? 'pc-danger-btn' : 'primary-btn'}
+              >
+                {productActionBusy ? 'Enregistrement…' : `Confirmer (${moderationTarget.status})`}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {reportDecision && (
+        <Modal
+          title={`Signalement · ${reportDecision.status}`}
+          icon={<ModernAlertWarningIcon size={20} />}
+          onClose={() => { if (!reportBusy) setReportDecision(null); }}
+        >
+          <form
+            onSubmit={async e => {
+              e.preventDefault();
+              if (reportBusy) return;
+              setReportBusy(true);
+              try {
+                const noteText = reportDecision.note.trim();
+                const res = await apiAdminUpdateReportStatus(reportDecision.report.id, reportDecision.status, noteText || undefined);
+                if (!res.ok) {
+                  say(res.error);
+                  return;
+                }
+                setReportDecision(null);
+                await refreshAdminState();
+                say(
+                  noteText
+                    ? `Signalement passé à « ${reportDecision.status} » (${noteText}).`
+                    : `Signalement passé à « ${reportDecision.status} ».`,
+                );
+              } finally {
+                setReportBusy(false);
+              }
+            }}
+          >
+            <p className="muted" style={{ marginBottom: 12 }}>
+              Cible : <b>{reportDecision.report.target}</b> ({reportDecision.report.reason})
+            </p>
+            <label className="form-field">
+              Note de traitement (optionnelle)
+              <textarea
+                rows={3}
+                disabled={reportBusy}
+                value={reportDecision.note}
+                onChange={e => setReportDecision(prev => (prev ? { ...prev, note: e.target.value } : null))}
+                placeholder="Ex. Fiche vérifiée avec le titulaire, information corrigée."
+              />
+            </label>
+            <div className="modal-actions">
+              <button type="button" className="outline-btn" disabled={reportBusy} onClick={() => setReportDecision(null)}>Annuler</button>
+              <button
+                type="submit"
+                disabled={reportBusy}
+                className={reportDecision.status === 'Rejeté' ? 'pc-danger-btn' : 'primary-btn'}
+              >
+                {reportBusy ? 'Enregistrement…' : `Confirmer (${reportDecision.status})`}
+              </button>
             </div>
           </form>
         </Modal>
@@ -1888,30 +2106,29 @@ export default function AdminPage() {
         <Modal
           title={editingBadge ? 'Modifier le badge' : 'Créer un badge'}
           icon={<ModernMetricAwardIcon size={20} />}
-          onClose={() => setModal(null)}
+          onClose={() => { if (!adminModalBusy) setModal(null); }}
         >
           <form onSubmit={saveBadge}>
             <label className="form-field">
               Nom du badge *
-              <input required disabled={isVerifiedSystem} value={badgeForm.name} onChange={e => setBadgeForm({ ...badgeForm, name: e.target.value })} />
+              <input required disabled={isVerifiedSystem || adminModalBusy} value={badgeForm.name} onChange={e => setBadgeForm({ ...badgeForm, name: e.target.value })} />
             </label>
             <label className="form-field">
               Description
-              <input value={badgeForm.description} onChange={e => setBadgeForm({ ...badgeForm, description: e.target.value })} />
+              <input disabled={adminModalBusy} value={badgeForm.description} onChange={e => setBadgeForm({ ...badgeForm, description: e.target.value })} />
             </label>
             <div className="form-grid">
               <label>
                 Couleur
-                <select value={badgeForm.color} onChange={e => setBadgeForm({ ...badgeForm, color: e.target.value })}>
+                <select disabled={adminModalBusy} value={badgeForm.color} onChange={e => setBadgeForm({ ...badgeForm, color: e.target.value })}>
                   <option value="mint">Vert menthe</option>
-                  <option value="blue">Bleu</option>
-                  <option value="gold">Or</option>
-                  <option value="slate">Gris</option>
+                  <option value="blue">Bleu médical</option>
+                  <option value="slate">Gris ardoise</option>
                 </select>
               </label>
               <label>
                 Icône
-                <select value={badgeForm.icon} onChange={e => setBadgeForm({ ...badgeForm, icon: e.target.value })}>
+                <select disabled={adminModalBusy} value={badgeForm.icon} onChange={e => setBadgeForm({ ...badgeForm, icon: e.target.value })}>
                   <option value="shield">Bouclier</option>
                   <option value="star">Étoile</option>
                   <option value="award">Distinction</option>
@@ -1923,7 +2140,7 @@ export default function AdminPage() {
                 <input
                   type="number"
                   min="1"
-                  disabled={isVerifiedSystem}
+                  disabled={isVerifiedSystem || adminModalBusy}
                   value={isVerifiedSystem ? '' : badgeForm.expiryDays}
                   onChange={e => setBadgeForm({ ...badgeForm, expiryDays: e.target.value })}
                   placeholder={isVerifiedSystem ? 'Permanent (système)' : 'Sans expiration'}
@@ -1933,15 +2150,17 @@ export default function AdminPage() {
             <label className="check-field">
               <input
                 type="checkbox"
-                disabled={isVerifiedSystem}
+                disabled={isVerifiedSystem || adminModalBusy}
                 checked={isVerifiedSystem ? true : badgeForm.visible}
                 onChange={e => setBadgeForm({ ...badgeForm, visible: e.target.checked })}
               />
               Afficher ce badge sur les fiches publiques
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setModal(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">Enregistrer le badge</button>
+              <button type="button" className="outline-btn" disabled={adminModalBusy} onClick={() => setModal(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={adminModalBusy}>
+                {adminModalBusy ? 'Enregistrement…' : 'Enregistrer le badge'}
+              </button>
             </div>
           </form>
         </Modal>
@@ -1951,48 +2170,54 @@ export default function AdminPage() {
         <Modal
           title={pharmacyModal.mode === 'create' ? 'Ajouter une pharmacie' : `Modifier · ${pharmacyModal.name}`}
           icon={<ModernDigitalStoreIcon size={20} />}
-          onClose={() => setPharmacyModal(null)}
+          onClose={() => { if (!adminModalBusy) setPharmacyModal(null); }}
           wide
         >
           <form
             onSubmit={async e => {
               e.preventDefault();
+              if (adminModalBusy) return;
               const lat = pharmacyModal.lat.trim() ? Number(pharmacyModal.lat) : undefined;
               const lng = pharmacyModal.lng.trim() ? Number(pharmacyModal.lng) : undefined;
-              if (pharmacyModal.mode === 'create') {
-                const res = await apiAdminCreatePharmacy({
-                  name: pharmacyModal.name.trim(),
-                  city: pharmacyModal.city.trim(),
-                  area: pharmacyModal.area.trim(),
-                  address: pharmacyModal.address.trim(),
-                  phone: pharmacyModal.phone.trim(),
-                  email: pharmacyModal.email.trim(),
-                  license: pharmacyModal.license.trim(),
-                  responsible: pharmacyModal.responsible.trim(),
-                  subscription: pharmacyModal.subscription,
-                  ...(lat !== undefined && Number.isFinite(lat) ? { lat } : {}),
-                  ...(lng !== undefined && Number.isFinite(lng) ? { lng } : {}),
-                });
-                if (!res.ok) { say(res.error); return; }
-                setPharmacyModal(null);
-                await refreshAdminState();
-                say('Établissement créé.');
-              } else if (pharmacyModal.pharmacyId) {
-                const res = await apiAdminUpdatePharmacy(pharmacyModal.pharmacyId, {
-                  name: pharmacyModal.name.trim(),
-                  city: pharmacyModal.city.trim(),
-                  area: pharmacyModal.area.trim(),
-                  address: pharmacyModal.address.trim(),
-                  phone: pharmacyModal.phone.trim(),
-                  email: pharmacyModal.email.trim() || null,
-                  responsible: pharmacyModal.responsible.trim(),
-                  lat: lat !== undefined && Number.isFinite(lat) ? lat : null,
-                  lng: lng !== undefined && Number.isFinite(lng) ? lng : null,
-                });
-                if (!res.ok) { say(res.error); return; }
-                setPharmacyModal(null);
-                await refreshAdminState();
-                say('Fiche établissement mise à jour.');
+              setAdminModalBusy(true);
+              try {
+                if (pharmacyModal.mode === 'create') {
+                  const res = await apiAdminCreatePharmacy({
+                    name: pharmacyModal.name.trim(),
+                    city: pharmacyModal.city.trim(),
+                    area: pharmacyModal.area.trim(),
+                    address: pharmacyModal.address.trim(),
+                    phone: pharmacyModal.phone.trim(),
+                    email: pharmacyModal.email.trim(),
+                    license: pharmacyModal.license.trim(),
+                    responsible: pharmacyModal.responsible.trim(),
+                    subscription: pharmacyModal.subscription,
+                    ...(lat !== undefined && Number.isFinite(lat) ? { lat } : {}),
+                    ...(lng !== undefined && Number.isFinite(lng) ? { lng } : {}),
+                  });
+                  if (!res.ok) { say(res.error); return; }
+                  setPharmacyModal(null);
+                  await refreshAdminState();
+                  say('Établissement créé.');
+                } else if (pharmacyModal.pharmacyId) {
+                  const res = await apiAdminUpdatePharmacy(pharmacyModal.pharmacyId, {
+                    name: pharmacyModal.name.trim(),
+                    city: pharmacyModal.city.trim(),
+                    area: pharmacyModal.area.trim(),
+                    address: pharmacyModal.address.trim(),
+                    phone: pharmacyModal.phone.trim(),
+                    email: pharmacyModal.email.trim() || null,
+                    responsible: pharmacyModal.responsible.trim(),
+                    lat: lat !== undefined && Number.isFinite(lat) ? lat : null,
+                    lng: lng !== undefined && Number.isFinite(lng) ? lng : null,
+                  });
+                  if (!res.ok) { say(res.error); return; }
+                  setPharmacyModal(null);
+                  await refreshAdminState();
+                  say('Fiche établissement mise à jour.');
+                }
+              } finally {
+                setAdminModalBusy(false);
               }
             }}
           >
@@ -2021,8 +2246,10 @@ export default function AdminPage() {
               <label>Longitude<input type="number" step="any" value={pharmacyModal.lng} onChange={e => setPharmacyModal({ ...pharmacyModal, lng: e.target.value })} placeholder="Ex. 15.0492" /></label>
             </div>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setPharmacyModal(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">{pharmacyModal.mode === 'create' ? 'Créer la pharmacie' : 'Enregistrer'}</button>
+              <button type="button" className="outline-btn" disabled={adminModalBusy} onClick={() => setPharmacyModal(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={adminModalBusy}>
+                {adminModalBusy ? 'Enregistrement…' : pharmacyModal.mode === 'create' ? 'Créer la pharmacie' : 'Enregistrer'}
+              </button>
             </div>
           </form>
         </Modal>
@@ -2032,48 +2259,54 @@ export default function AdminPage() {
         <Modal
           title={productModal.mode === 'create' ? 'Ajouter un produit' : `Modifier · ${productModal.name}`}
           icon={<ModernPackageBoxIcon size={20} />}
-          onClose={() => setProductModal(null)}
+          onClose={() => { if (!adminModalBusy) setProductModal(null); }}
           wide
         >
           <form
             onSubmit={async e => {
               e.preventDefault();
+              if (adminModalBusy) return;
               const price = Number(productModal.price);
               const stock = Number(productModal.stock);
               if (productModal.name.trim().length < 2 || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0) {
                 say('Indiquez un nom, un prix valide (>= 0) et un stock entier (>= 0).');
                 return;
               }
-              if (productModal.mode === 'create') {
-                const res = await apiAdminCreateProduct(productModal.pharmacyId, {
-                  name: productModal.name.trim(),
-                  category: productModal.category,
-                  brand: productModal.brand.trim(),
-                  code: productModal.code.trim(),
-                  price,
-                  stock,
-                  description: productModal.description.trim(),
-                  status: productModal.status,
-                });
-                if (!res.ok) { say(res.error); return; }
-                setProductModal(null);
-                await refreshAdminState();
-                say('Produit créé.');
-              } else if (productModal.productId) {
-                const res = await apiAdminUpdateProduct(productModal.productId, {
-                  name: productModal.name.trim(),
-                  category: productModal.category,
-                  brand: productModal.brand.trim(),
-                  code: productModal.code.trim(),
-                  price,
-                  stock,
-                  description: productModal.description.trim(),
-                  status: productModal.status,
-                });
-                if (!res.ok) { say(res.error); return; }
-                setProductModal(null);
-                await refreshAdminState();
-                say('Fiche produit mise à jour.');
+              setAdminModalBusy(true);
+              try {
+                if (productModal.mode === 'create') {
+                  const res = await apiAdminCreateProduct(productModal.pharmacyId, {
+                    name: productModal.name.trim(),
+                    category: productModal.category,
+                    brand: productModal.brand.trim(),
+                    code: productModal.code.trim(),
+                    price,
+                    stock,
+                    description: productModal.description.trim(),
+                    status: productModal.status,
+                  });
+                  if (!res.ok) { say(res.error); return; }
+                  setProductModal(null);
+                  await refreshAdminState();
+                  say('Produit créé.');
+                } else if (productModal.productId) {
+                  const res = await apiAdminUpdateProduct(productModal.productId, {
+                    name: productModal.name.trim(),
+                    category: productModal.category,
+                    brand: productModal.brand.trim(),
+                    code: productModal.code.trim(),
+                    price,
+                    stock,
+                    description: productModal.description.trim(),
+                    status: productModal.status,
+                  });
+                  if (!res.ok) { say(res.error); return; }
+                  setProductModal(null);
+                  await refreshAdminState();
+                  say('Fiche produit mise à jour.');
+                }
+              } finally {
+                setAdminModalBusy(false);
               }
             }}
           >
@@ -2118,8 +2351,10 @@ export default function AdminPage() {
               <textarea value={productModal.description} onChange={e => setProductModal({ ...productModal, description: e.target.value })} />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setProductModal(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">{productModal.mode === 'create' ? 'Créer le produit' : 'Enregistrer'}</button>
+              <button type="button" className="outline-btn" disabled={adminModalBusy} onClick={() => setProductModal(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={adminModalBusy}>
+                {adminModalBusy ? 'Enregistrement…' : productModal.mode === 'create' ? 'Créer le produit' : 'Enregistrer'}
+              </button>
             </div>
           </form>
         </Modal>
@@ -2129,30 +2364,37 @@ export default function AdminPage() {
         <Modal
           title="Renommer la catégorie officielle"
           icon={<ModernTagCategoryIcon size={20} />}
-          onClose={() => setRenamingCategory(null)}
+          onClose={() => { if (!adminModalBusy) setRenamingCategory(null); }}
         >
           <form
             onSubmit={async e => {
               e.preventDefault();
+              if (adminModalBusy) return;
               const next = renamingCategory.nextName.trim();
               if (next.length < 2) {
                 say('Indiquez un nom valide (2 caractères min.).');
                 return;
               }
-              const res = await apiAdminRenameCategory(renamingCategory.oldName, next);
-              if (!res.ok) {
-                say(res.error);
-                return;
+              setAdminModalBusy(true);
+              try {
+                const res = await apiAdminRenameCategory(renamingCategory.oldName, next);
+                if (!res.ok) {
+                  say(res.error);
+                  return;
+                }
+                setRenamingCategory(null);
+                await refreshAdminState();
+                say('Catégorie officielle renommée.');
+              } finally {
+                setAdminModalBusy(false);
               }
-              setRenamingCategory(null);
-              await refreshAdminState();
-              say('Catégorie officielle renommée.');
             }}
           >
             <label className="form-field">
               Nouveau nom *
               <input
                 required
+                disabled={adminModalBusy}
                 minLength={2}
                 maxLength={80}
                 value={renamingCategory.nextName}
@@ -2160,8 +2402,10 @@ export default function AdminPage() {
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="outline-btn" onClick={() => setRenamingCategory(null)}>Annuler</button>
-              <button type="submit" className="primary-btn">Enregistrer</button>
+              <button type="button" className="outline-btn" disabled={adminModalBusy} onClick={() => setRenamingCategory(null)}>Annuler</button>
+              <button type="submit" className="primary-btn" disabled={adminModalBusy}>
+                {adminModalBusy ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
             </div>
           </form>
         </Modal>

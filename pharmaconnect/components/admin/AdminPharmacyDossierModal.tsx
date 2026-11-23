@@ -1,33 +1,52 @@
 'use client';
 
-import { Check, Download, Eye, MapPin, Phone, ShieldCheck, XCircle } from 'lucide-react';
-import { Badge, Modal, Pharmacy, PharmacyStatus, Status } from '@/lib/shared';
+import { useState } from 'react';
+import { Check, Clock, Download, Eye, MapPin, Package, Pencil, Phone, RotateCcw, ShieldCheck, XCircle } from 'lucide-react';
+import { Badge, Modal, Pharmacy, PharmacyStatus, Status, isBadgeActive } from '@/lib/shared';
 import { ModernDigitalStoreIcon, ModernDocumentCheckIcon, ModernVerifiedShieldIcon } from '@/components/shared/ModernIcons';
 
 interface AdminPharmacyDossierModalProps {
   pharmacy: Pharmacy | null;
   badges: Badge[];
+  busy?: boolean;
   onClose: () => void;
-  onStatus: (id: number, status: PharmacyStatus) => void;
+  onStatus: (id: number, status: PharmacyStatus) => Promise<boolean | void> | void;
+  onEdit?: (p: Pharmacy) => void;
   onDownloadDocument: (docId: number, fileName: string) => void;
 }
 
 export function AdminPharmacyDossierModal({
   pharmacy,
   badges,
+  busy = false,
   onClose,
   onStatus,
+  onEdit,
   onDownloadDocument,
 }: AdminPharmacyDossierModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+
   if (!pharmacy) return null;
 
+  const isBusy = busy || submitting;
   const assignedBadges = badges.filter(b => pharmacy.badgeIds.includes(b.id));
+
+  const triggerStatus = async (status: PharmacyStatus) => {
+    if (isBusy) return;
+    setSubmitting(true);
+    try {
+      const ok = await Promise.resolve(onStatus(pharmacy.id, status));
+      if (ok !== false) onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Modal
       title={`Dossier officine · ${pharmacy.name}`}
       icon={<ModernDocumentCheckIcon size={20} />}
-      onClose={onClose}
+      onClose={() => { if (!isBusy) onClose(); }}
       wide
     >
       <div className="pc-dossier-grid">
@@ -47,10 +66,24 @@ export function AdminPharmacyDossierModal({
               {pharmacy.address ? `${pharmacy.address}, ` : ''}{pharmacy.area}, {pharmacy.city}
             </li>
             <li>
-              <strong>Contact :</strong> <Phone size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
-              {pharmacy.phone} · {pharmacy.email}
+              <strong>Coordonnées GPS :</strong>{' '}
+              {pharmacy.lat != null && pharmacy.lng != null
+                ? `${pharmacy.lat.toFixed(5)}, ${pharmacy.lng.toFixed(5)}`
+                : 'Non géolocalisée'}
             </li>
-            <li><strong>Formule :</strong> {pharmacy.subscription}</li>
+            <li>
+              <strong>Horaires d’ouverture :</strong> <Clock size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+              {pharmacy.openingHours || 'Non renseignés'}
+            </li>
+            <li>
+              <strong>Contact :</strong> <Phone size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+              {pharmacy.phone}{pharmacy.email ? ` · ${pharmacy.email}` : ''}
+            </li>
+            <li>
+              <strong>Catalogue produits :</strong> <Package size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+              {pharmacy.products} produit(s)
+            </li>
+            <li><strong>Formule :</strong> {pharmacy.subscription || 'Basic'}</li>
             <li>
               <strong>Échéance :</strong>{' '}
               {pharmacy.subscriptionEndsAt
@@ -91,11 +124,29 @@ export function AdminPharmacyDossierModal({
             <strong style={{ fontSize: 12, color: 'var(--pine)' }}>Badges attribués :</strong>
             <div className="pc-dossier-badges">
               {assignedBadges.length > 0 ? (
-                assignedBadges.map(b => (
-                  <span key={b.id} className="pc-role-chip">
-                    <ModernVerifiedShieldIcon size={13} /> {b.name}
-                  </span>
-                ))
+                assignedBadges.map(b => {
+                  const active = isBadgeActive(pharmacy, b);
+                  const assignedAt = pharmacy.badgeAssignedAt?.[String(b.id)];
+                  const expiresAt = assignedAt && b.expiryDays
+                    ? new Date(new Date(assignedAt).getTime() + b.expiryDays * 86400000).toLocaleDateString('fr-FR')
+                    : null;
+                  return (
+                    <span
+                      key={b.id}
+                      className={`pc-role-chip ${!active ? 'pc-badge-expired' : ''}`}
+                      title={
+                        assignedAt
+                          ? `Attribué le ${new Date(assignedAt).toLocaleDateString('fr-FR')}${expiresAt ? ` · Expire le ${expiresAt}` : ''}`
+                          : b.description
+                      }
+                    >
+                      <ModernVerifiedShieldIcon size={13} />
+                      <span>{b.name}</span>
+                      {!active && <small className="pc-badge-expired-tag">Expiré</small>}
+                      {active && expiresAt && <small className="pc-badge-date-meta">({expiresAt})</small>}
+                    </span>
+                  );
+                })
               ) : (
                 <span className="muted" style={{ fontSize: 12 }}>Aucun badge actif</span>
               )}
@@ -105,36 +156,32 @@ export function AdminPharmacyDossierModal({
       </div>
 
       <div className="modal-actions" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div className="table-actions">
+        <div className="table-actions" style={{ flexWrap: 'wrap', gap: 8 }}>
           {(pharmacy.status === 'En attente' || pharmacy.status === 'En vérification') && (
             <>
               <button
                 type="button"
-                className="mini-action accept"
-                onClick={() => {
-                  onClose();
-                  onStatus(pharmacy.id, 'Validée');
-                }}
+                className="primary-btn"
+                disabled={isBusy}
+                onClick={() => void triggerStatus('Validée')}
               >
-                <Check size={14} /> Valider l’agrément
+                <Check size={14} /> {isBusy ? 'Traitement…' : 'Valider l’agrément'}
               </button>
+              {pharmacy.status === 'En attente' && (
+                <button
+                  type="button"
+                  className="outline-btn"
+                  disabled={isBusy}
+                  onClick={() => void triggerStatus('En vérification')}
+                >
+                  <Eye size={14} /> Mettre en vérification
+                </button>
+              )}
               <button
                 type="button"
-                className="mini-action"
-                onClick={() => {
-                  onClose();
-                  onStatus(pharmacy.id, 'En vérification');
-                }}
-              >
-                <Eye size={14} /> Mettre en vérification
-              </button>
-              <button
-                type="button"
-                className="mini-action reject"
-                onClick={() => {
-                  onClose();
-                  onStatus(pharmacy.id, 'Refusée');
-                }}
+                className="pc-danger-btn"
+                disabled={isBusy}
+                onClick={() => void triggerStatus('Refusée')}
               >
                 <XCircle size={14} /> Refuser avec motif
               </button>
@@ -143,11 +190,9 @@ export function AdminPharmacyDossierModal({
           {pharmacy.status === 'Validée' && (
             <button
               type="button"
-              className="mini-action reject"
-              onClick={() => {
-                onClose();
-                onStatus(pharmacy.id, 'Suspendue');
-              }}
+              className="pc-danger-btn"
+              disabled={isBusy}
+              onClick={() => void triggerStatus('Suspendue')}
             >
               <XCircle size={14} /> Suspendre avec motif
             </button>
@@ -155,18 +200,49 @@ export function AdminPharmacyDossierModal({
           {pharmacy.status === 'Suspendue' && (
             <button
               type="button"
-              className="mini-action accept"
+              className="primary-btn"
+              disabled={isBusy}
+              onClick={() => void triggerStatus('Validée')}
+            >
+              <ShieldCheck size={14} /> {isBusy ? 'Traitement…' : 'Réactiver l’établissement'}
+            </button>
+          )}
+          {pharmacy.status === 'Refusée' && (
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={isBusy}
+              onClick={() => void triggerStatus('En vérification')}
+            >
+              <RotateCcw size={14} /> {isBusy ? 'Traitement…' : 'Ré-examiner'}
+            </button>
+          )}
+          {pharmacy.status === 'Abonnement expiré' && !pharmacy.subscriptionEndsAt && !pharmacy.trialEndsAt && (
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={isBusy}
+              onClick={() => void triggerStatus('Validée')}
+            >
+              <Check size={14} /> {isBusy ? 'Traitement…' : 'Valider le dossier'}
+            </button>
+          )}
+          {onEdit && (
+            <button
+              type="button"
+              className="outline-btn"
+              disabled={isBusy}
               onClick={() => {
                 onClose();
-                onStatus(pharmacy.id, 'Validée');
+                onEdit(pharmacy);
               }}
             >
-              <ShieldCheck size={14} /> Réactiver l’établissement
+              <Pencil size={14} /> Modifier
             </button>
           )}
         </div>
 
-        <button type="button" className="outline-btn" onClick={onClose}>
+        <button type="button" className="outline-btn" disabled={isBusy} onClick={onClose}>
           Fermer
         </button>
       </div>
