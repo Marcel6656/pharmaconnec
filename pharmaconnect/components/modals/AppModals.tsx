@@ -126,6 +126,7 @@ interface AppModalsProps {
   setPharmacyLoginForm: (f: any) => void;
   pharmacyLoginError: string;
   setPharmacyLoginError: (e: string) => void;
+  pharmacyLoggedIn?: boolean;
   setPharmacyLoggedIn: (v: boolean) => void;
   setAccountOwnerId: (id: number) => void;
   setSelectedPharmacyId: (id: number) => void;
@@ -190,6 +191,7 @@ export function AppModals({
   setPharmacyLoginForm,
   pharmacyLoginError,
   setPharmacyLoginError,
+  pharmacyLoggedIn = false,
   setPharmacyLoggedIn,
   setAccountOwnerId,
   setSelectedPharmacyId,
@@ -580,7 +582,7 @@ export function AppModals({
 
       {modal === 'payment' && (
         <Modal
-          title="Paiement de l’abonnement"
+          title="Moyens de paiement & Abonnement"
           icon={<ModernCreditCardPlanIcon size={20} />}
           onClose={() => setModal(null)}
         >
@@ -596,32 +598,79 @@ export function AppModals({
 
             <div className="modal-info">
               <ModernPhoneCallIcon size={17} />
-              {paymentMode === 'live'
-                ? 'Demande Mobile Money transmise à votre opérateur.'
-                : 'Demande Mobile Money soumise au service de rapprochement pour vérification.'}
+              {pharmacyLoggedIn
+                ? paymentMode === 'live'
+                  ? 'Demande Mobile Money transmise à votre opérateur.'
+                  : 'Demande Mobile Money soumise au service de rapprochement pour vérification.'
+                : 'Choisissez votre moyen de paiement Mobile Money ci-dessous, puis connectez-vous à votre espace pharmacie ou inscrivez votre officine pour valider.'}
+            </div>
+
+            <div className="form-field">
+              <span>Choisir un moyen de paiement Mobile Money *</span>
+              <div className="pc-payment-methods-grid" role="radiogroup" aria-label="Moyens de paiement Mobile Money">
+                {paymentOperators.map(provider => {
+                  const selected = paymentDraft.provider === provider;
+                  return (
+                    <button
+                      key={provider}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={paymentBusy}
+                      className={`pc-payment-method-card ${selected ? 'is-selected' : ''}`}
+                      onClick={() => setPaymentDraft({ ...paymentDraft, provider })}
+                    >
+                      <span className="pc-payment-method-dot" aria-hidden="true" />
+                      <div>
+                        <b>{provider}</b>
+                        <small>Mobile Money · FCFA</small>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <label className="form-field">
-              <span>Opérateur Mobile Money *</span>
-              <select required disabled={paymentBusy} value={paymentDraft.provider}
-                onChange={e => setPaymentDraft({ ...paymentDraft, provider: e.target.value })}>
-                <option value="">Choisir un opérateur</option>
-                {paymentOperators.map(provider => <option key={provider}>{provider}</option>)}
-              </select>
-            </label>
-            <label className="form-field">
               <span>Numéro Mobile Money *</span>
-              <input required type="tel" disabled={paymentBusy} value={paymentDraft.phone}
+              <input required={pharmacyLoggedIn} type="tel" disabled={paymentBusy} value={paymentDraft.phone}
                 onChange={e => setPaymentDraft({ ...paymentDraft, phone: e.target.value })}
                 placeholder="Ex. +235 66 00 00 00" />
             </label>
 
             <div className="modal-actions">
               <button type="button" className="outline-btn" disabled={paymentBusy} onClick={() => setModal(null)}>Annuler</button>
-              <button className="primary-btn" disabled={paymentBusy}>
-                <ModernCreditCardPlanIcon size={15} />
-                {paymentBusy ? 'Envoi en cours…' : 'Envoyer la demande de paiement'}
-              </button>
+              {pharmacyLoggedIn ? (
+                <button className="primary-btn" disabled={paymentBusy}>
+                  <ModernCreditCardPlanIcon size={15} />
+                  {paymentBusy ? 'Envoi en cours…' : 'Envoyer la demande de paiement'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="outline-btn"
+                    onClick={() => {
+                      setExistingAccountRegistration(false);
+                      setModal('register');
+                    }}
+                  >
+                    Inscrire ma pharmacie
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={() => {
+                      setPendingPharmacyPage?.('Abonnement');
+                      setPharmacyLoginError('');
+                      setPharmacyLoginForm({ email: '', password: '' });
+                      setModal('pharmacyLogin');
+                    }}
+                  >
+                    <ModernCreditCardPlanIcon size={15} /> Se connecter pour payer
+                  </button>
+                </>
+              )}
             </div>
           </form>
         </Modal>

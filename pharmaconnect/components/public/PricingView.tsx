@@ -25,6 +25,7 @@ interface PricingViewProps {
   setModal: (m: any) => void;
   say: (s: string) => void;
   currentLang?: Language;
+  onSelectPlan?: (plan: AppData['plans'][number]) => void;
 }
 
 export function PricingView({
@@ -35,7 +36,8 @@ export function PricingView({
   setNewPharmacyPlan,
   setModal,
   say,
-  currentLang = 'fr'
+  currentLang = 'fr',
+  onSelectPlan,
 }: PricingViewProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
@@ -141,13 +143,17 @@ export function PricingView({
             <button
               className={i === 2 ? 'primary-btn full-btn' : 'outline-btn full-btn'}
               onClick={() => {
-                setExistingAccountRegistration(false);
                 setNewPharmacyPlan(plan.name);
-                setModal('register');
-                say(`Formule ${plan.name} sélectionnée. Complétez votre demande d’inscription.`);
+                if (onSelectPlan) {
+                  onSelectPlan(plan);
+                } else {
+                  setExistingAccountRegistration(false);
+                  setModal('register');
+                  say(`Formule ${plan.name} sélectionnée. Complétez votre demande d’inscription.`);
+                }
               }}
             >
-              Choisir cette formule <ArrowRight size={15} />
+              {isEn ? 'Choose this plan' : 'Choisir cette formule'} <ArrowRight size={15} />
             </button>
           </div>
         ))}

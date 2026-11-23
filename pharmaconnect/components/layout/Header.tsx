@@ -855,7 +855,7 @@ export function Header({
               className={`mega-nav-trigger mega-mobile-account-link ${activeMegaMenu === 'account' ? 'is-open' : ''}`}
               onClick={() => toggleMegaMenu('account')}
             >
-              <span>{isEn ? 'Portal & Account' : 'Espace & Compte'}</span>
+              <span>{isEn ? 'Sign In' : 'Se connecter'}</span>
               <Lock size={13} aria-hidden="true" />
               <ChevronDown size={14} className="mega-chevron" />
             </button>
@@ -899,7 +899,7 @@ export function Header({
                 onMouseEnter={() => handleTriggerHover('account')}
               >
                 <ModernDigitalStoreIcon size={15} />
-                <span>{isEn ? 'Portal & Account' : 'Espace & Compte'}</span>
+                <span>{isEn ? 'Sign In' : 'Se connecter'}</span>
                 <Lock size={13} aria-hidden="true" />
                 <ChevronDown size={14} className="mega-chevron" />
               </button>

@@ -21256,3 +21256,74 @@ body,
     justify-content: space-between;
   }
 }
+
+/* Cartes de sélection des moyens de paiement Mobile Money */
+.pc-payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pc-payment-method-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(44, 44, 44, 0.14);
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pc-payment-method-card:hover {
+  border-color: var(--accent-color);
+  background: #faf7f2;
+}
+
+.pc-payment-method-card.is-selected {
+  border-color: var(--accent-color);
+  background: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.2);
+}
+
+.pc-payment-method-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(44, 44, 44, 0.3);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.pc-payment-method-card.is-selected .pc-payment-method-dot {
+  border-color: var(--accent-color);
+}
+
+.pc-payment-method-card.is-selected .pc-payment-method-dot::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--accent-color);
+}
+
+.pc-payment-method-card b {
+  display: block;
+  font-size: 13.5px;
+  color: var(--primary-color);
+}
+
+.pc-payment-method-card small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-light);
+}
+
+@media (max-width: 440px) {
+  .pc-payment-methods-grid {
+    grid-template-columns: 1fr;
+  }
+}

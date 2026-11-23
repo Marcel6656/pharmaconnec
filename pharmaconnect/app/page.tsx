@@ -730,26 +730,35 @@ export default function Home() {
 
   async function changePlan(plan: AppData['plans'][number]) {
     const config = await apiRequest<{ mode: string; operators: string[] }>('/api/payments/config', 'GET');
-    if (!config.ok || !config.data?.operators?.length) {
-      say('Aucun opérateur Mobile Money disponible pour le moment.');
-      return;
-    }
-    setPaymentOperators(config.data.operators);
-    setPaymentMode(config.data.mode);
+    const operators =
+      config.ok && config.data?.operators?.length
+        ? config.data.operators
+        : ['Airtel Money', 'Moov Money', 'Orange Money', 'Wave'];
+    setPaymentOperators(operators);
+    setPaymentMode(config.ok && config.data?.mode ? config.data.mode : 'manual_reconciliation');
+    setNewPharmacyPlan(plan.name);
     setPaymentDraft({
       requestId: crypto.randomUUID(),
       plan: plan.name,
       amount: plan[planPeriod as 'monthly' | 'quarterly' | 'yearly'],
       period: planPeriod === 'monthly' ? 'Mensuel' : planPeriod === 'quarterly' ? 'Trimestriel' : 'Annuel',
-      provider: config.data.operators.length === 1 ? config.data.operators[0] : '',
-      phone: '',
+      provider: operators[0] || '',
+      phone: currentOwned?.phone || '',
     });
     setModal('payment');
   }
 
   async function createPaymentRequest(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentOwned || pharmacyId <= 0 || runningMutations.current.has('payment')) return;
+    if (!pharmacyLoggedIn || !currentOwned || pharmacyId <= 0) {
+      setPendingPharmacyPage('Abonnement');
+      setPharmacyLoginError('');
+      setPharmacyLoginForm({ email: '', password: '' });
+      setModal('pharmacyLogin');
+      say('Connectez-vous à votre espace pharmacie pour finaliser le paiement.');
+      return;
+    }
+    if (runningMutations.current.has('payment')) return;
     if (!paymentOperators.includes(paymentDraft.provider) || !paymentDraft.phone.trim()) {
       say('Choisissez un opérateur et renseignez un numéro Mobile Money.');
       return;
@@ -949,6 +958,7 @@ export default function Home() {
                 setModal={setModal}
                 say={say}
                 currentLang={lang}
+                onSelectPlan={changePlan}
               />
             )}
 
@@ -1116,6 +1126,7 @@ export default function Home() {
         setPharmacyLoginForm={setPharmacyLoginForm}
         pharmacyLoginError={pharmacyLoginError}
         setPharmacyLoginError={setPharmacyLoginError}
+        pharmacyLoggedIn={pharmacyLoggedIn && Boolean(currentOwned && pharmacyId > 0)}
         setPharmacyLoggedIn={setPharmacyLoggedIn}
         setAccountOwnerId={setAccountOwnerId}
         setSelectedPharmacyId={setSelectedPharmacyId}
