@@ -18,7 +18,7 @@ export class CreateReportDto {
 
 export class ContactFormDto {
   @ApiProperty() @IsString() @MinLength(2) @MaxLength(120) name: string;
-  @ApiProperty() @IsEmail() email: string;
+  @ApiProperty() @IsEmail() @MaxLength(254) email: string;
   @ApiProperty() @IsString() @MinLength(2) @MaxLength(160) topic: string;
   @ApiProperty() @IsString() @MinLength(4) @MaxLength(4000) message: string;
 }
@@ -32,6 +32,7 @@ export class ReportsService {
   ) { }
 
   async createReport(user: AuthUser | undefined, dto: CreateReportDto) {
+    await this.core.assertDistributedRateLimit('public_report', `${dto.pharmacyId}:${user?.email || 'anon'}`, 10, 5 * 60_000);
     const pharmacy = await this.prisma.pharmacy.findUnique({ where: { id: dto.pharmacyId } });
     if (!pharmacy || !this.core.isPharmacyActiveAndValid(pharmacy)) {
       throw new NotFoundException('Pharmacie introuvable ou non active.');
@@ -60,6 +61,7 @@ export class ReportsService {
   }
 
   async contact(user: AuthUser | undefined, dto: ContactFormDto) {
+    await this.core.assertDistributedRateLimit('public_contact', dto.email.trim().toLowerCase(), 5, 10 * 60_000);
     const created = await this.prisma.contactMessage.create({
       data: {
         userId: user?.id ?? null,

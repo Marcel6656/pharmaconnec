@@ -44,11 +44,21 @@ async function bootstrap() {
     res.setHeader('Cache-Control', 'no-store');
     next();
   });
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.disable('x-powered-by');
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      frameguard: { action: 'deny' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      hsts: process.env.NODE_ENV === 'production'
+        ? { maxAge: 63072000, includeSubDomains: true, preload: true }
+        : false,
+    }),
+  );
 
-  // Autoriser les payloads JSON jusqu'à 5 Mo pour les images produits compressées en base64
-  app.useBodyParser('json', { limit: '5mb' });
-  app.useBodyParser('urlencoded', { limit: '5mb', extended: true });
+  // Autoriser les payloads JSON jusqu'à 2.5 Mo pour les images produits compressées en base64
+  app.useBodyParser('json', { limit: '2.5mb' });
+  app.useBodyParser('urlencoded', { limit: '256kb', extended: true });
 
   const origins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
     .split(',')

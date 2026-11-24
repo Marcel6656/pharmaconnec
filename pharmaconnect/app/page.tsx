@@ -38,6 +38,7 @@ import {
   reloadOnAuthChange,
   apiRequest
 } from '@/lib/api';
+import { subscribeRealtimeSignals } from '@/lib/supabase';
 
 const initialData: AppData = {
   ...seed, products: [], pharmacies: [], messages: [], badges: [], payments: [],
@@ -335,7 +336,14 @@ export default function Home() {
       setClock(Date.now());
       void refreshStateFromBackend();
     }, 60_000);
-    return () => window.clearInterval(timer);
+    const unsubscribeRealtime = subscribeRealtimeSignals('main', () => {
+      setClock(Date.now());
+      void refreshStateFromBackend();
+    });
+    return () => {
+      window.clearInterval(timer);
+      unsubscribeRealtime();
+    };
   }, []);
 
   const say = (s: string) => { setNotice(s); window.setTimeout(() => setNotice(''), 4500); };

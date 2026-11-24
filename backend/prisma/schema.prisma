@@ -331,3 +331,14 @@ model CustomRecord {
 
   @@unique([namespace, recordKey])
 }
+
+/// Signaux temps réel anonymisés (aucune donnée personnelle) diffusés via Supabase Realtime
+model RealtimeSignal {
+  id         Int      @id @default(autoincrement())
+  topic      String
+  event      String
+  pharmacyId Int?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

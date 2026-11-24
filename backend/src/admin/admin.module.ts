@@ -5,7 +5,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { createReadStream, existsSync } from 'fs';
 import { join } from 'path';
 import type { Response } from 'express';
@@ -17,7 +17,7 @@ import {
   ContactStatus, PharmacyStatus, PlanName, Role,
 } from '../common/constants';
 import { serializeBadge, serializePharmacy, serializePlan, serializeProduct } from '../common/serializers';
-import { PRIVATE_UPLOAD_DIR } from '../common/uploads';
+import { isSafeExternalHttpUrl, PRIVATE_UPLOAD_DIR, sanitizeFileName, sanitizeJsonRecord } from '../common/uploads';
 import { AuthService } from '../auth/auth.module';
 import { PaymentsModule, PaymentsService } from '../payments/payments.module';
 import { ProductsModule, ProductsService, UpdateProductStatusDto } from '../products/products.module';
@@ -71,9 +71,9 @@ export class AdminCreatePharmacyDto {
 }
 
 export class AdminHealthSectionDto {
-  @ApiProperty({ type: [Object] }) @IsArray() alerts: Record<string, unknown>[];
-  @ApiProperty({ type: [Object] }) @IsArray() news: Record<string, unknown>[];
-  @ApiProperty({ type: [Object] }) @IsArray() emergencyNumbers: Record<string, unknown>[];
+  @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(50) alerts: Record<string, unknown>[];
+  @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(50) news: Record<string, unknown>[];
+  @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(50) emergencyNumbers: Record<string, unknown>[];
 }
 
 export class BadgeDto {
@@ -318,6 +318,7 @@ export class AdminService {
       where: { id },
       include: { badges: { include: { badge: true } }, _count: { select: { products: true } } },
     });
+    void this.core.emitRealtime('pharmacy', 'status_updated', id);
     return serializePharmacy(updated, { includePrivate: true, includeHiddenBadges: true, productsCount: updated._count.products });
   }
 
@@ -326,9 +327,12 @@ export class AdminService {
     if (!doc) throw new NotFoundException('Justificatif introuvable.');
     const fullPath = join(PRIVATE_UPLOAD_DIR, doc.storedName);
     await this.core.audit(user, 'Justificatif téléchargé', 'Document', docId);
+    const safeName = sanitizeFileName(doc.fileName);
+    const asciiFallback = safeName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
     res.set({
       'Content-Type': doc.mimeType,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
+      'Content-Disposition': `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+      'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'none'; sandbox",
     });
@@ -814,10 +818,32 @@ export class AdminService {
   }
 
   async saveHealthSection(user: AuthUser, dto: AdminHealthSectionDto) {
+    const sanitizeItemList = (items: Record<string, unknown>[]) =>
+      items.map(item => {
+        const clean = sanitizeJsonRecord(item, 4096) || {};
+        for (const [k, v] of Object.entries(clean)) {
+          if (typeof v === 'string') {
+            const trimmed = v.trim().slice(0, 1000);
+            if (/^(url|href|link|imageUrl|sourceUrl)$/i.test(k) && trimmed) {
+              if (!trimmed.startsWith('/') && !isSafeExternalHttpUrl(trimmed)) {
+                throw new BadRequestException(`URL non autorisée dans le champ « ${k} ».`);
+              }
+            }
+            if (/^\s*(javascript|vbscript|data):/i.test(trimmed)) {
+              throw new BadRequestException(`Protocole interdit dans le champ « ${k} ».`);
+            }
+            clean[k] = trimmed;
+          }
+        }
+        return clean;
+      });
+    const alerts = sanitizeItemList(dto.alerts);
+    const news = sanitizeItemList(dto.news);
+    const emergencyNumbers = sanitizeItemList(dto.emergencyNumbers);
     const payload = {
-      alerts: dto.alerts,
-      news: dto.news,
-      emergencyNumbers: dto.emergencyNumbers,
+      alerts,
+      news,
+      emergencyNumbers,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email,
     };
@@ -1177,7 +1203,11 @@ export class AdminController {
     @Query('actor') actor?: string,
     @Query('q') q?: string,
   ) {
-    return this.svc.auditLogs(limit ? Number(limit) : 200, actor, q);
+    return this.svc.auditLogs(
+      limit ? Number(limit) : 200,
+      actor ? actor.slice(0, 80) : undefined,
+      q ? q.slice(0, 160) : undefined,
+    );
   }
 
   @Get('audit-logs/export')
@@ -1185,6 +1215,8 @@ export class AdminController {
     const logs = await this.svc.auditLogs(500);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="pharmaconnect-audit-logs.json"');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(JSON.stringify(logs, null, 2));
   }
 }

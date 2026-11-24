@@ -1,7 +1,7 @@
 import { Controller, Get, Header, Injectable, Module, NotFoundException, Param, ParseIntPipe, Query, StreamableFile } from '@nestjs/common';
 import { ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CoreService } from '../common/core.service';
@@ -13,17 +13,17 @@ import { DAY_MS } from '../common/constants';
 import { distanceKm, serializeBadge, serializePharmacy, serializePlan, serializePublicProduct } from '../common/serializers';
 
 export class DirectoryQuery {
-  @ApiPropertyOptional({ description: 'Nom, quartier, adresse' }) @IsOptional() @IsString() q?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() city?: string;
+  @ApiPropertyOptional({ description: 'Nom, quartier, adresse' }) @IsOptional() @IsString() @MaxLength(160) q?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() lat?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() lng?: number;
   @ApiPropertyOptional({ description: 'Filtrer sur un badge (ex. garde)' }) @IsOptional() @Type(() => Number) @IsInt() badgeId?: number;
 }
 
 export class CatalogQuery {
-  @ApiPropertyOptional({ description: 'Nom, marque, code-barres, pharmacie' }) @IsOptional() @IsString() q?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() city?: string;
+  @ApiPropertyOptional({ description: 'Nom, marque, code-barres, pharmacie' }) @IsOptional() @IsString() @MaxLength(160) q?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) category?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() pharmacyId?: number;
   @ApiPropertyOptional({ enum: ['Toutes', 'Disponible', 'Indisponible'] }) @IsOptional() @IsIn(['Toutes', 'Disponible', 'Indisponible']) availability?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) minPrice?: number;
@@ -88,9 +88,11 @@ export class PublicService {
       }),
     ]);
     if (!pharmacy && !product) throw unavailable();
-    const image = await readFile(join(PUBLIC_UPLOAD_DIR, filename)).catch(() => null);
-    if (!image) throw unavailable();
-    return new StreamableFile(image, { type: mime });
+    const localImage = await readFile(join(PUBLIC_UPLOAD_DIR, filename)).catch(() => null);
+    if (localImage) return new StreamableFile(localImage, { type: mime });
+    const persisted = await this.core.readPublicImage(filename);
+    if (!persisted) throw unavailable();
+    return new StreamableFile(persisted.buffer, { type: mime });
   }
 
   async directory(q: DirectoryQuery) {

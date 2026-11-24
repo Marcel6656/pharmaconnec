@@ -1,11 +1,18 @@
 import type { AppData } from './shared';
 
 const TOKEN_STORAGE_KEY = 'pharmaconnect-jwt-token';
+const JWT_SHAPE_RE = /^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/;
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!raw) return null;
+    if (raw.length > 4096 || !JWT_SHAPE_RE.test(raw)) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      return null;
+    }
+    return raw;
   } catch {
     return null;
   }
@@ -13,6 +20,7 @@ export function getAuthToken(): string | null {
 
 export function setAuthToken(token: string) {
   if (typeof window === 'undefined') return;
+  if (!token || token.length > 4096 || !JWT_SHAPE_RE.test(token)) return;
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
   } catch { }

@@ -45,6 +45,7 @@ import {
   apiAdminUpdateUser, apiAdminUpdateUserStatus, apiAdminUsers, apiMe, clearAuthToken, getAuthToken, reloadOnAuthChange,
   fetchBackendState,
 } from '@/lib/api';
+import { subscribeRealtimeSignals } from '@/lib/supabase';
 import { DEFAULT_EMERGENCY_NUMBERS, DEFAULT_HEALTH_ALERTS, DEFAULT_HEALTH_NEWS, HealthSectionPayload } from '@/lib/health-section';
 import { AdminUsersPanel } from '@/components/admin/AdminUsersPanel';
 import { AdminHealthSectionPanel } from '@/components/admin/AdminHealthSectionPanel';
@@ -320,6 +321,13 @@ export default function AdminPage() {
 
     return () => { active = false; stopWatchingAuth(); };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    return subscribeRealtimeSignals('admin', () => {
+      void loadAllAdminData();
+    });
+  }, [isAuthenticated]);
 
   const say = (s: string) => { setNotice(s); window.setTimeout(() => setNotice(''), 4500); };
   const go = (s: string) => {

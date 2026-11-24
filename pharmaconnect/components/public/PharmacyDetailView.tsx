@@ -195,7 +195,7 @@ export function PharmacyDetailView({
                 <b>WhatsApp</b>
                 <small>Appel & Chat</small>
               </a>
-              <a className="sp-quick-action-btn" target="_blank" rel="noreferrer" href={mapsUrl}>
+              <a className="sp-quick-action-btn" target="_blank" rel="noopener noreferrer" href={mapsUrl}>
                 <span className="sp-action-orb blue"><ModernRadarPinIcon size={19} /></span>
                 <b>Itinéraire</b>
                 <small>GPS · Maps</small>
@@ -278,7 +278,7 @@ export function PharmacyDetailView({
             <div className="sp-localisation-card">
               <div className="sp-localisation-head">
                 <b>Localisation</b>
-                <a href={mapsUrl} target="_blank" rel="noreferrer">
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                   Ouvrir GPS <ExternalLink size={12} />
                 </a>
               </div>

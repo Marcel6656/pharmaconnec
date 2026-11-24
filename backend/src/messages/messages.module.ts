@@ -21,7 +21,7 @@ export class SendPublicMessageDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) subject?: string;
   @ApiProperty() @IsString() @MinLength(2) @MaxLength(3000) body: string;
   @ApiPropertyOptional({ description: 'Adresse e-mail de contact facultative pour une demande anonyme' })
-  @IsOptional() @IsEmail() visitorEmail?: string;
+  @IsOptional() @IsEmail() @MaxLength(254) visitorEmail?: string;
 }
 
 export class ReplyMessageDto {
@@ -85,6 +85,7 @@ export class MessagesService {
     }
 
     const email = (user?.role === 'VISITOR' ? user.email : dto.visitorEmail)?.trim().toLowerCase() || null;
+    await this.core.assertDistributedRateLimit('public_message', `${dto.pharmacyId}:${email || cleanPhone}`, 15, 60_000);
     const msg = await this.prisma.message.create({
       data: {
         pharmacyId: dto.pharmacyId,
@@ -111,6 +112,7 @@ export class MessagesService {
     }
 
     await this.core.audit(user, 'Message envoyé à la pharmacie', 'Message', msg.id);
+    void this.core.emitRealtime('message', 'created', dto.pharmacyId);
     return serializeMessage(msg);
   }
 
@@ -149,6 +151,7 @@ export class MessagesService {
       return message;
     });
     await this.core.audit(user, 'Réponse envoyée au visiteur', 'Message', created.id);
+    void this.core.emitRealtime('message', 'pharmacy_reply', parent.pharmacyId);
     return serializeMessage(created);
   }
 
@@ -234,6 +237,7 @@ export class MessagesService {
       },
     });
     await this.core.audit(user, 'Réponse visiteur envoyée', 'Message', created.id);
+    void this.core.emitRealtime('message', 'visitor_reply', parent.pharmacyId);
     return serializeMessage(created);
   }
 }

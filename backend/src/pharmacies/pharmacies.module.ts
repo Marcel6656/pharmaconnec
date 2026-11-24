@@ -24,6 +24,8 @@ import {
   PRIVATE_UPLOAD_DIR,
   publicUrl,
   readFileBufferAndHash,
+  sanitizeFileName,
+  sanitizeJsonRecord,
 } from '../common/uploads';
 import { serializePharmacy } from '../common/serializers';
 import { AuthModule, AuthService } from '../auth/auth.module';
@@ -35,7 +37,7 @@ export class PharmacyProfileDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) area?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) address?: string;
   @ApiProperty() @IsString() @MinLength(6) @MaxLength(40) phone: string;
-  @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160) responsible?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(-90) @Max(90) lat?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) lng?: number;
@@ -52,7 +54,7 @@ export class RegisterPharmacyDto extends PharmacyProfileDto {
   @ApiPropertyOptional({ enum: PLAN_NAMES, default: 'Basic' }) @IsOptional() @IsIn(PLAN_NAMES) plan?: PlanName;
   @ApiProperty({ description: 'Liste des justificatifs annoncés (les fichiers sont envoyés via /documents)' })
   @IsString() @MinLength(2) @MaxLength(500) documents: string;
-  @ApiPropertyOptional({ description: 'Requis si non connecté : e-mail du compte professionnel' }) @IsOptional() @IsEmail() accountEmail?: string;
+  @ApiPropertyOptional({ description: 'Requis si non connecté : e-mail du compte professionnel' }) @IsOptional() @IsEmail() @MaxLength(254) accountEmail?: string;
   @ApiPropertyOptional({ description: 'Requis si non connecté (8 car. min, majuscule, minuscule et chiffre)' })
   @IsOptional() @IsString() @MinLength(8) @MaxLength(128)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/, { message: 'Le mot de passe doit contenir au moins 8 caractères avec majuscule, minuscule et chiffre.' })
@@ -104,6 +106,9 @@ export class PharmaciesService {
       throw new BadRequestException('Renseignez les coordonnées et le dossier de l’établissement.');
     }
     const accountEmail = dto.accountEmail?.trim().toLowerCase();
+    await this.core.assertDistributedRateLimit('pharmacy_register', accountEmail || user?.email || cleanLicense, 5, 10 * 60_000);
+    const safeHours = sanitizeJsonRecord(dto.openingHoursJson);
+    const safeMeta = sanitizeJsonRecord(dto.metadata);
     const passwordHash = !user && dto.password ? await AuthService.hash(dto.password) : undefined;
 
     const { pharmacy, ownerId, createdUser } = await this.prisma.serializable(async tx => {
@@ -146,8 +151,8 @@ export class PharmaciesService {
           lat: dto.lat,
           lng: dto.lng,
           openingHours: dto.openingHours,
-          ...(dto.openingHoursJson !== undefined ? { openingHoursJson: dto.openingHoursJson as Prisma.InputJsonValue } : {}),
-          ...(dto.metadata !== undefined ? { metadata: dto.metadata as Prisma.InputJsonValue } : {}),
+          ...(safeHours !== undefined ? { openingHoursJson: safeHours as Prisma.InputJsonValue } : {}),
+          ...(safeMeta !== undefined ? { metadata: safeMeta as Prisma.InputJsonValue } : {}),
           subscription: dto.plan ?? 'Basic',
           documentsNote: dto.documents,
           status: 'En attente',
@@ -183,14 +188,16 @@ export class PharmaciesService {
     if ([dto.name, dto.city, dto.phone].some(value => value === null || (value !== undefined && value.trim().length < 2))) {
       throw new BadRequestException('Nom, ville et téléphone ne peuvent pas être vides.');
     }
+    const safeHours = sanitizeJsonRecord(dto.openingHoursJson);
+    const safeMeta = sanitizeJsonRecord(dto.metadata);
     await this.prisma.pharmacy.update({
       where: { id },
       data: {
         name: dto.name?.trim(), city: dto.city?.trim(), area: dto.area?.trim(), address: dto.address?.trim(),
         phone: dto.phone?.trim(), email: dto.email === null ? '' : dto.email?.trim().toLowerCase(), responsible: dto.responsible?.trim(),
         lat: dto.lat, lng: dto.lng, openingHours: dto.openingHours,
-        ...(dto.openingHoursJson !== undefined ? { openingHoursJson: dto.openingHoursJson as Prisma.InputJsonValue } : {}),
-        ...(dto.metadata !== undefined ? { metadata: dto.metadata as Prisma.InputJsonValue } : {}),
+        ...(safeHours !== undefined ? { openingHoursJson: safeHours as Prisma.InputJsonValue } : {}),
+        ...(safeMeta !== undefined ? { metadata: safeMeta as Prisma.InputJsonValue } : {}),
       },
     });
     await this.core.audit(user, 'Profil établissement modifié', 'Pharmacie', id);
@@ -201,12 +208,27 @@ export class PharmaciesService {
     if (!file) throw new BadRequestException('Fichier image requis (champ « file »).');
     try {
       assertSafeUploadedFiles([file], IMAGE_TYPES);
-      await this.prisma.serializable(async tx => {
+      const { buffer, sha256 } = readFileBufferAndHash(file.path);
+      const previousCover = await this.prisma.serializable(async tx => {
         const pharmacy = await this.core.assertPharmacyAccess(user, id, tx);
         if (user.role !== 'ADMIN') this.core.assertPharmacyOperational(pharmacy);
         await tx.pharmacy.update({ where: { id }, data: { coverImage: publicUrl(file.filename) } });
         await this.core.audit(user, 'Image de couverture mise à jour', 'Pharmacie', id, tx);
+        return pharmacy.coverImage;
       });
+      await this.core.persistPublicImage({
+        storedName: file.filename,
+        mimeType: file.mimetype,
+        buffer,
+        sha256,
+        ownerId: user.id,
+        pharmacyId: id,
+        entity: 'pharmacy_cover',
+        entityId: id,
+      });
+      if (previousCover && previousCover !== publicUrl(file.filename)) {
+        void this.core.deletePublicImage(previousCover);
+      }
     } catch (err) {
       cleanupUploadedFiles([file]);
       throw err;
@@ -223,7 +245,7 @@ export class PharmaciesService {
         const { buffer, sha256 } = readFileBufferAndHash(f.path);
         return {
           pharmacyId: id,
-          fileName: f.originalname,
+          fileName: sanitizeFileName(f.originalname),
           storedName: f.filename,
           mimeType: f.mimetype,
           size: f.size,

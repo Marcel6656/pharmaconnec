@@ -21,6 +21,8 @@ import {
   isManagedImageReference,
   isSafeImageReference,
   publicUrl,
+  readFileBufferAndHash,
+  sanitizeJsonRecord,
 } from '../common/uploads';
 
 // ---------- DTO ----------
@@ -108,6 +110,7 @@ export class ProductsService {
       throw new BadRequestException('Référence image non autorisée.');
     }
     if (dto.name.trim().length < 2) throw new BadRequestException('Nom du produit requis.');
+    const safeAttributes = sanitizeJsonRecord(dto.attributes);
     const isAdmin = user.role === 'ADMIN';
     const isDraft = Boolean(dto.draft || dto.status === 'Brouillon');
     const status: ProductStatus = isDraft ? 'Brouillon' : (isAdmin && dto.status === 'Publié' ? 'Publié' : 'En attente');
@@ -132,7 +135,7 @@ export class ProductsService {
           price: dto.price,
           stock: dto.stock,
           description: dto.description?.trim() ?? '',
-          ...(dto.attributes !== undefined ? { attributes: dto.attributes as Prisma.InputJsonValue } : {}),
+          ...(safeAttributes !== undefined ? { attributes: safeAttributes as Prisma.InputJsonValue } : {}),
           imageUrl: dto.imageDataUrl || null,
           status,
           stockUpdatedAt: new Date(),
@@ -148,6 +151,7 @@ export class ProductsService {
   async update(user: AuthUser, id: number, dto: UpdateProductDto) {
     const isAdmin = user.role === 'ADMIN';
     const isDraft = Boolean(dto.draft || dto.status === 'Brouillon');
+    const safeAttributes = sanitizeJsonRecord(dto.attributes);
     const updated = await this.prisma.serializable(async tx => {
       const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
       if (!isAdmin) {
@@ -210,7 +214,7 @@ export class ProductsService {
           price: nextPrice,
           stock: nextStock,
           description: dto.description?.trim(),
-          ...(dto.attributes != null ? { attributes: dto.attributes as Prisma.InputJsonValue } : {}),
+          ...(safeAttributes !== undefined ? { attributes: safeAttributes as Prisma.InputJsonValue } : {}),
           imageUrl: dto.imageDataUrl !== undefined ? dto.imageDataUrl || null : undefined,
           status: nextStatus,
           note: nextStatus === 'En attente' ? null : undefined,
@@ -255,6 +259,7 @@ export class ProductsService {
     }
 
     await this.core.audit(user, 'Stock ou prix actualisé', 'Produit', id);
+    void this.core.emitRealtime('product', 'stock_updated', updated.pharmacyId);
     return serializeProduct(updated);
   }
 
@@ -309,6 +314,7 @@ export class ProductsService {
       await this.core.notify(updated.pharmacyId, `Produit ${dto.status.toLowerCase()}`,
         note || `${updated.name} : le statut a été mis à jour par l’administration.`, kind);
     }
+    void this.core.emitRealtime('product', 'status_updated', updated.pharmacyId);
     return serializeProduct(updated);
   }
 
@@ -332,7 +338,8 @@ export class ProductsService {
     const isAdmin = user.role === 'ADMIN';
     try {
       assertSafeUploadedFiles([file], IMAGE_TYPES);
-      const updated = await this.prisma.serializable(async tx => {
+      const { buffer, sha256 } = readFileBufferAndHash(file.path);
+      const { product: updated, previousImage } = await this.prisma.serializable(async tx => {
         const { product: existing, pharmacy } = await this.findAndAuthorize(user, id, tx);
         if (!isAdmin) {
           this.core.assertPharmacyOperational(pharmacy);
@@ -349,8 +356,21 @@ export class ProductsService {
           ? 'Image produit mise à jour (repassé en attente de validation)'
           : 'Image produit mise à jour';
         await this.core.audit(user, auditAction, 'Produit', id, tx);
-        return product;
+        return { product, previousImage: existing.imageUrl };
       });
+      await this.core.persistPublicImage({
+        storedName: file.filename,
+        mimeType: file.mimetype,
+        buffer,
+        sha256,
+        ownerId: user.id,
+        pharmacyId: updated.pharmacyId,
+        entity: 'product_image',
+        entityId: id,
+      });
+      if (previousImage && previousImage !== publicUrl(file.filename)) {
+        void this.core.deletePublicImage(previousImage);
+      }
       return serializeProduct(updated);
     } catch (err) {
       cleanupUploadedFiles([file]);
@@ -367,6 +387,7 @@ export class ProductsService {
       this.core.assertPharmacyOperational(pharmacy);
     }
     await this.prisma.product.delete({ where: { id } });
+    void this.core.deletePublicImage(existing.imageUrl);
     await this.core.audit(user, 'Produit supprimé', 'Produit', id);
     return { deleted: true, id };
   }

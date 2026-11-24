@@ -800,7 +800,8 @@ describe('PharmaConnect — Sécurité & Règles métier', () => {
       method: 'PATCH', body: JSON.stringify({ price: 300, stock: 10 }),
     }, token);
     assert.equal(forbiddenStock.status, 403);
-    assert.equal((await api(`/products/${id}`, { method: 'DELETE' }, token)).status, 200);
+    assert.equal((await api(`/products/${id}`, { method: 'DELETE' }, token)).status, 403);
+    assert.equal((await api(`/products/${id}`, { method: 'DELETE' }, adminToken)).status, 200);
   });
 
   it('réserve la messagerie privée au compte qui a créé le fil', async () => {

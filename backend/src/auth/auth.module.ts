@@ -18,13 +18,13 @@ const PASSWORD_COMPLEXITY_MSG = 'Le mot de passe doit contenir au moins 8 caract
 // ---------- DTO ----------
 export class RegisterVisitorDto {
   @ApiProperty() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)) @IsString() @MinLength(2) @MaxLength(120) name: string;
-  @ApiProperty() @IsEmail() email: string;
+  @ApiProperty() @IsEmail() @MaxLength(254) email: string;
   @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8) @MaxLength(128) @Matches(PASSWORD_COMPLEXITY_RE, { message: PASSWORD_COMPLEXITY_MSG }) password: string;
 }
 
 export class LoginDto {
-  @ApiProperty() @IsEmail() email: string;
-  @ApiProperty() @IsString() @MinLength(1) password: string;
+  @ApiProperty() @IsEmail() @MaxLength(254) email: string;
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(128) password: string;
   @ApiPropertyOptional({ enum: ROLES, description: 'Restreint la connexion à un espace (ex. PHARMACIST pour le portail pharmacie).' })
   @IsOptional() @IsIn(ROLES) role?: Role;
 }
@@ -46,17 +46,19 @@ export class UpdateMeDto {
 }
 
 export class ChangePasswordDto {
-  @ApiProperty() @IsString() currentPassword: string;
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(128) currentPassword: string;
   @ApiProperty() @IsString() @MinLength(8) @MaxLength(128) @Matches(PASSWORD_COMPLEXITY_RE, { message: PASSWORD_COMPLEXITY_MSG }) newPassword: string;
 }
+
+const DUMMY_BCRYPT_HASH = bcrypt.hashSync('PharmaConnect-Constant-Time-Dummy-2026!', 10);
 
 // ---------- Service ----------
 @Injectable()
 export class AuthService {
   private readonly googleClient = new OAuth2Client();
-  private readonly failedLogins = new Map<string, { count: number; lockedUntil: number; updatedAt: number }>();
   private static readonly MAX_FAILED_LOGINS = 5;
   private static readonly LOCKOUT_MS = 15 * 60_000;
+  private static readonly LOCKOUT_NS = 'auth_lockout';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -64,28 +66,42 @@ export class AuthService {
     private readonly core: CoreService,
   ) { }
 
-  private recordFailedLogin(email: string) {
+  private async recordFailedLogin(email: string) {
     const now = Date.now();
-    if (this.failedLogins.size > 1000) {
-      for (const [k, v] of this.failedLogins.entries()) {
-        if (now - v.updatedAt > AuthService.LOCKOUT_MS) this.failedLogins.delete(k);
-      }
-    }
-    const prev = this.failedLogins.get(email);
-    const activeWindow = prev && now - prev.updatedAt <= AuthService.LOCKOUT_MS ? prev : { count: 0, lockedUntil: 0, updatedAt: now };
-    const nextCount = activeWindow.count + 1;
+    const existing = await this.prisma.customRecord.findUnique({
+      where: { namespace_recordKey: { namespace: AuthService.LOCKOUT_NS, recordKey: email } },
+    });
+    const prev = (existing?.data && typeof existing.data === 'object' ? existing.data : null) as
+      | { count?: number; lockedUntil?: number; updatedAt?: number }
+      | null;
+    const inWindow = Boolean(prev?.updatedAt && now - prev.updatedAt <= AuthService.LOCKOUT_MS);
+    const nextCount = (inWindow ? Number(prev?.count || 0) : 0) + 1;
     const lockedUntil = nextCount >= AuthService.MAX_FAILED_LOGINS ? now + AuthService.LOCKOUT_MS : 0;
-    this.failedLogins.set(email, { count: nextCount, lockedUntil, updatedAt: now });
+    await this.prisma.customRecord.upsert({
+      where: { namespace_recordKey: { namespace: AuthService.LOCKOUT_NS, recordKey: email } },
+      update: { data: { count: nextCount, lockedUntil, updatedAt: now } },
+      create: { namespace: AuthService.LOCKOUT_NS, recordKey: email, data: { count: nextCount, lockedUntil, updatedAt: now } },
+    });
   }
 
-  private assertNotLocked(email: string) {
-    const entry = this.failedLogins.get(email);
-    if (!entry) return;
-    if (entry.lockedUntil > Date.now()) {
+  private async clearFailedLogins(email: string) {
+    await this.prisma.customRecord.deleteMany({
+      where: { namespace: AuthService.LOCKOUT_NS, recordKey: email },
+    }).catch(() => {});
+  }
+
+  private async assertNotLocked(email: string) {
+    const existing = await this.prisma.customRecord.findUnique({
+      where: { namespace_recordKey: { namespace: AuthService.LOCKOUT_NS, recordKey: email } },
+    });
+    if (!existing?.data || typeof existing.data !== 'object') return;
+    const entry = existing.data as { count?: number; lockedUntil?: number; updatedAt?: number };
+    const now = Date.now();
+    if (entry.lockedUntil && entry.lockedUntil > now) {
       throw new HttpException('Trop de tentatives échouées. Réessayez dans 15 minutes.', HttpStatus.TOO_MANY_REQUESTS);
     }
-    if (Date.now() - entry.updatedAt > AuthService.LOCKOUT_MS) {
-      this.failedLogins.delete(email);
+    if (entry.updatedAt && now - entry.updatedAt > AuthService.LOCKOUT_MS) {
+      await this.clearFailedLogins(email);
     }
   }
 
@@ -143,6 +159,7 @@ export class AuthService {
 
   async registerVisitor(dto: RegisterVisitorDto) {
     const email = dto.email.trim().toLowerCase();
+    await this.core.assertDistributedRateLimit('auth_register', email, 5, 10 * 60_000);
     if (await this.prisma.user.findUnique({ where: { email } })) throw new ConflictException('Un compte existe déjà avec cette adresse.');
     const user = await this.prisma.user.create({
       data: { email, name: dto.name.trim(), passwordHash: await AuthService.hash(dto.password), role: 'VISITOR', provider: 'email' },
@@ -153,15 +170,17 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const email = dto.email.trim().toLowerCase();
-    this.assertNotLocked(email);
+    await this.assertNotLocked(email);
     const user = await this.prisma.user.findUnique({ where: { email } });
-    const ok = user?.passwordHash && user.active && (await bcrypt.compare(dto.password, user.passwordHash));
+    // Comparaison bcrypt systématique en temps constant pour prévenir l'énumération d'e-mails
+    const passwordMatches = await bcrypt.compare(dto.password, user?.passwordHash || DUMMY_BCRYPT_HASH);
+    const ok = Boolean(user?.passwordHash && user.active && passwordMatches);
     if (!user || !ok) {
-      this.recordFailedLogin(email);
+      await this.recordFailedLogin(email);
       throw new UnauthorizedException('E-mail ou mot de passe incorrect.');
     }
     if (dto.role && user.role !== dto.role) throw new ForbiddenException('Ce compte n’a pas accès à cet espace.');
-    this.failedLogins.delete(email);
+    await this.clearFailedLogins(email);
     return this.issue(user);
   }
 
@@ -264,9 +283,9 @@ export class AuthService {
     if (!user.passwordHash || !password) {
       throw new ConflictException('Pour associer Google à ce compte, saisissez votre mot de passe PharmaConnect puis cliquez à nouveau sur Continuer avec Google.');
     }
-    this.assertNotLocked(user.email);
+    await this.assertNotLocked(user.email);
     if (!(await bcrypt.compare(password, user.passwordHash))) {
-      this.recordFailedLogin(user.email);
+      await this.recordFailedLogin(user.email);
       throw new UnauthorizedException('Mot de passe PharmaConnect incorrect.');
     }
 
@@ -282,7 +301,7 @@ export class AuthService {
       await this.core.audit({ id: user.id, email: user.email, role: user.role as Role, name: user.name }, 'Identité Google associée après confirmation du mot de passe', 'Utilisateur', user.id, tx);
       return tx.user.findUniqueOrThrow({ where: { id: user.id } });
     }).catch(error => this.handleGoogleConflict(error));
-    this.failedLogins.delete(user.email);
+    await this.clearFailedLogins(user.email);
     return linked;
   }
 
