@@ -42,7 +42,7 @@ import {
   apiAdminSaveHealthSection, apiAdminSetPharmacyBadge, apiAdminUpdateContact,
   apiAdminUpdatePaymentStatus, apiAdminUpdatePharmacy, apiAdminUpdatePharmacyStatus, apiAdminUpdatePlan,
   apiAdminUpdateProduct, apiAdminUpdateProductStatus, apiAdminUpdateReportStatus, apiAdminUpdateSettings,
-  apiAdminUpdateUser, apiAdminUpdateUserStatus, apiAdminUsers, apiLogin, apiMe, clearAuthToken, getAuthToken, reloadOnAuthChange,
+  apiAdminUpdateUser, apiAdminUpdateUserStatus, apiAdminUsers, apiMe, clearAuthToken, getAuthToken, reloadOnAuthChange,
   fetchBackendState,
 } from '@/lib/api';
 import { DEFAULT_EMERGENCY_NUMBERS, DEFAULT_HEALTH_ALERTS, DEFAULT_HEALTH_NEWS, HealthSectionPayload } from '@/lib/health-section';
@@ -50,7 +50,6 @@ import { AdminUsersPanel } from '@/components/admin/AdminUsersPanel';
 import { AdminHealthSectionPanel } from '@/components/admin/AdminHealthSectionPanel';
 import { AdminPharmacyDossierModal } from '@/components/admin/AdminPharmacyDossierModal';
 import { AdminProductInspectModal } from '@/components/admin/AdminProductInspectModal';
-import { AdminLoginScreen } from '@/components/admin/AdminLoginScreen';
 import { AdminDashboardView } from '@/components/admin/AdminDashboardView';
 import { ConfirmDangerModal } from '@/components/admin/ConfirmDangerModal';
 import { PageTransitionStage } from '@/components/shared/MotionStage';
@@ -118,9 +117,6 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [adminIdentity, setAdminIdentity] = useState<{ name: string; email: string } | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<number | null>(null);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
 
   const [data, setData] = useState<AppData>(emptyAdminData);
   const [ready, setReady] = useState(false);
@@ -315,6 +311,9 @@ export default function AdminPage() {
       } else {
         sessionStorage.removeItem('pharmaconnect-admin-auth');
         setIsAuthenticated(false);
+        if (typeof window !== 'undefined') {
+          window.location.replace('/?auth=login&from=admin');
+        }
       }
       if (active) setReady(true);
     });
@@ -327,29 +326,6 @@ export default function AdminPage() {
     setPage(s);
     setQuery('');
     setAdminTab(s === 'Demandes pharmacies' ? 'Toutes' : 'Tous');
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const apiResult = await apiLogin(loginEmail, loginPassword, 'ADMIN');
-    if (apiResult.ok) {
-      sessionStorage.setItem('pharmaconnect-admin-auth', 'true');
-      setCurrentAdminId(apiResult.data.user.id);
-      setAdminIdentity({
-        name: apiResult.data.user.name || 'Administrateur',
-        email: apiResult.data.user.email,
-      });
-      setIsAuthenticated(true);
-      setLoginError('');
-      const merged = await loadAllAdminData();
-      if (!merged) {
-        say('Connecté, mais impossible de charger les données serveur.');
-      } else {
-        say('Connexion administration réussie.');
-      }
-    } else {
-      setLoginError(apiResult.error);
-    }
   };
 
   const handleLogout = () => {
@@ -366,7 +342,9 @@ export default function AdminPage() {
     setAdminIdentity(null);
     setCurrentAdminId(null);
     setIsAuthenticated(false);
-    setLoginPassword('');
+    if (typeof window !== 'undefined') {
+      window.location.replace('/');
+    }
   };
 
   async function executePharmacyStatus(id: number, status: PharmacyStatus, note?: string): Promise<boolean> {
@@ -698,14 +676,41 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <AdminLoginScreen
-        loginEmail={loginEmail}
-        loginPassword={loginPassword}
-        loginError={loginError}
-        onEmailChange={setLoginEmail}
-        onPasswordChange={setLoginPassword}
-        onSubmit={handleLogin}
-      />
+      <div className="pc-adm-login-page">
+        <div
+          className="panel cg-modern-panel"
+          style={{
+            maxWidth: 440,
+            width: '100%',
+            padding: '32px 28px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
+          <span
+            className="pc-adm-login-emblem"
+            style={{ background: '#eef7f4', color: '#0d7a5f', border: '1px solid #cce7df' }}
+          >
+            <ModernVerifiedShieldIcon size={28} />
+          </span>
+          <h2 style={{ margin: 0, color: '#0d7a5f', fontSize: '1.2rem' }}>
+            {!ready ? 'Vérification de votre session…' : 'Authentification requise'}
+          </h2>
+          <p className="muted" style={{ margin: 0 }}>
+            {!ready
+              ? 'Contrôle des droits d’accès administrateur en cours.'
+              : 'Redirection vers le portail unique « Se connecter »…'}
+          </p>
+          {ready && (
+            <a href="/?auth=login&from=admin" className="primary-btn" style={{ marginTop: 6 }}>
+              Se connecter
+            </a>
+          )}
+        </div>
+      </div>
     );
   }
 

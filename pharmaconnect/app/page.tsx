@@ -151,6 +151,7 @@ export default function Home() {
   const [favoritePharmacyIds, setFavoritePharmacyIds] = useState<number[]>([]);
   const [activeVisitorThread, setActiveVisitorThread] = useState<number | null>(null);
   const [visitorReply, setVisitorReply] = useState('');
+  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
   const [pharmacyLoggedIn, setPharmacyLoggedIn] = useState(false);
   const [pendingPharmacyPage, setPendingPharmacyPage] = useState('Vue d’ensemble');
   const [accountOwnerId, setAccountOwnerId] = useState<number>(-1);
@@ -218,6 +219,7 @@ export default function Home() {
       localStorage.removeItem('pharmaconnect-pharmacy-accounts');
       localStorage.removeItem('pharmaconnect-data-v2');
     } catch { }
+    setAdminLoggedIn(false);
     setPharmacyLoggedIn(false);
     setAccountOwnerId(-1);
     setSelectedPharmacyId(-1);
@@ -239,6 +241,7 @@ export default function Home() {
       localStorage.removeItem('pharmaconnect-data-v2');
       localStorage.removeItem('pharmaconnect-visitor-favorites-v2');
     } catch { }
+    setAdminLoggedIn(false);
     setVisitorLoggedIn(false);
     setVisitorAccount({ name: '', email: '', password: '' });
     setModal(null);
@@ -264,11 +267,17 @@ export default function Home() {
     } catch { }
 
     const bootstrapSessionAndState = async () => {
+      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const authParam = searchParams?.get('auth');
+      const fromParam = searchParams?.get('from');
+
       const me = await apiMe();
       if (!active) return;
 
       let targetOwnerId: number | undefined;
-      if (me?.space === 'pharmacy' || me?.role === 'PHARMACIST') {
+      if (me?.role === 'ADMIN') {
+        setAdminLoggedIn(true);
+      } else if (me?.space === 'pharmacy' || me?.role === 'PHARMACIST') {
         targetOwnerId = me.id;
         setAccountOwnerId(me.id);
         setPharmacyLoggedIn(true);
@@ -284,10 +293,19 @@ export default function Home() {
           provider: me.provider === 'google' ? 'Google' : 'email',
         });
         setVisitorLoggedIn(true);
-      } else if (me?.role === 'ADMIN') {
-        // Admin session is managed on /admin
       } else {
+        setAdminLoggedIn(false);
         clearAuthToken();
+      }
+
+      if (authParam === 'login' && typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/');
+        if (!me) {
+          setModal('account');
+        } else if (fromParam === 'admin' && me.role !== 'ADMIN') {
+          setNotice('Connectez-vous avec un compte administrateur via « Se connecter » pour accéder à l’administration.');
+          setModal('account');
+        }
       }
 
       const remote = await refreshStateFromBackend(targetOwnerId, () => active);
@@ -857,6 +875,7 @@ export default function Home() {
             setMobileNavOpen={setMobileNavOpen}
             openSpace={openSpace}
             go={go}
+            adminLoggedIn={adminLoggedIn}
             pharmacyLoggedIn={pharmacyLoggedIn}
             visitorLoggedIn={visitorLoggedIn}
             setModal={setModal}
@@ -886,128 +905,128 @@ export default function Home() {
             onLogoutVisitor={handleVisitorLogout}
           />
           <main id="main-content" className="public-main">
-          {notice && (
-            <div className="toast">
-              <CheckCircle2 size={17} />{notice}
-              <button onClick={() => setNotice('')}><X size={15} /></button>
-            </div>
-          )}
+            {notice && (
+              <div className="toast">
+                <CheckCircle2 size={17} />{notice}
+                <button onClick={() => setNotice('')}><X size={15} /></button>
+              </div>
+            )}
 
-          <PageTransitionStage routeKey={`pub-${page}`}>
-            {page === 'Accueil' && (
-              <HomeView
-                data={publicData}
-                query={query}
-                setQuery={setQuery}
-                setCategoryFilter={setCategoryFilter}
-                go={go}
-                publicProducts={publicProducts}
-                setSelectedPharmacy={setSelectedPharmacy}
-                setSelectedProduct={setSelectedProduct}
-                setModal={setModal}
+            <PageTransitionStage routeKey={`pub-${page}`}>
+              {page === 'Accueil' && (
+                <HomeView
+                  data={publicData}
+                  query={query}
+                  setQuery={setQuery}
+                  setCategoryFilter={setCategoryFilter}
+                  go={go}
+                  publicProducts={publicProducts}
+                  setSelectedPharmacy={setSelectedPharmacy}
+                  setSelectedProduct={setSelectedProduct}
+                  setModal={setModal}
+                  setExistingAccountRegistration={setExistingAccountRegistration}
+                  currentLang={lang}
+                  onOpenHealthSubPage={(sub) => { setHealthSubPage(sub); go('Rubrique Santé'); }}
+                  onContactProduct={openMessageModal}
+                />
+              )}
+
+              {page === 'Pharmacies' && (
+                <PharmaciesView
+                  data={publicData}
+                  query={query}
+                  setQuery={setQuery}
+                  city={city}
+                  setCity={setCity}
+                  geo={geo}
+                  geoCoords={geoCoords}
+                  startGeo={startGeo}
+                  publicPharmacies={publicPharmacies}
+                  setSelectedPharmacy={setSelectedPharmacy}
+                  go={go}
+                  currentLang={lang}
+                />
+              )}
+
+              {page === 'Produits' && (
+                <ProductsView
+                  data={publicData}
+                  query={query}
+                  setQuery={setQuery}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  city={city}
+                  setCity={setCity}
+                  availabilityFilter={availabilityFilter}
+                  setAvailabilityFilter={setAvailabilityFilter}
+                  minPrice={minPrice}
+                  setMinPrice={setMinPrice}
+                  maxPrice={maxPrice}
+                  setMaxPrice={setMaxPrice}
+                  filteredPublicProducts={filteredPublicProducts}
+                  setSelectedPharmacy={setSelectedPharmacy}
+                  setSelectedProduct={setSelectedProduct}
+                  setModal={setModal}
+                  go={go}
+                  currentLang={lang}
+                  onContactProduct={openMessageModal}
+                />
+              )}
+
+              {page === 'Fiche pharmacie' && (
+                <PharmacyDetailView
+                  data={publicData}
+                  selectedPharmacy={selectedPharmacy}
+                  setSelectedProduct={setSelectedProduct}
+                  setSelectedPharmacy={setSelectedPharmacy}
+                  setModal={setModal}
+                  setMessageForm={setMessageForm}
+                  go={go}
+                  favoritePharmacyIds={favoritePharmacyIds}
+                  toggleFavoritePharmacy={toggleFavoritePharmacy}
+                  onContactProduct={openMessageModal}
+                  currentLang={lang}
+                />
+              )}
+
+              {page === 'Tarifs' && (
+                <PricingView
+                  data={publicData}
+                  planPeriod={planPeriod}
+                  setPlanPeriod={setPlanPeriod}
+                  setExistingAccountRegistration={setExistingAccountRegistration}
+                  setNewPharmacyPlan={setNewPharmacyPlan}
+                  setModal={setModal}
+                  say={say}
+                  currentLang={lang}
+                  onSelectPlan={changePlan}
+                  go={go}
+                />
+              )}
+
+              <StaticPagesView
+                page={page}
+                pharmacyForm={pharmacyForm}
+                setPharmacyForm={setPharmacyForm}
+                registerPharmacy={registerPharmacy}
+                existingAccountRegistration={existingAccountRegistration}
+                onRegistrationFilesChange={setRegistrationFiles}
                 setExistingAccountRegistration={setExistingAccountRegistration}
-                currentLang={lang}
-                onOpenHealthSubPage={(sub) => { setHealthSubPage(sub); go('Rubrique Santé'); }}
-                onContactProduct={openMessageModal}
-              />
-            )}
-
-            {page === 'Pharmacies' && (
-              <PharmaciesView
-                data={publicData}
-                query={query}
-                setQuery={setQuery}
-                city={city}
-                setCity={setCity}
-                geo={geo}
-                geoCoords={geoCoords}
-                startGeo={startGeo}
-                publicPharmacies={publicPharmacies}
-                setSelectedPharmacy={setSelectedPharmacy}
-                go={go}
-                currentLang={lang}
-              />
-            )}
-
-            {page === 'Produits' && (
-              <ProductsView
-                data={publicData}
-                query={query}
-                setQuery={setQuery}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                city={city}
-                setCity={setCity}
-                availabilityFilter={availabilityFilter}
-                setAvailabilityFilter={setAvailabilityFilter}
-                minPrice={minPrice}
-                setMinPrice={setMinPrice}
-                maxPrice={maxPrice}
-                setMaxPrice={setMaxPrice}
-                filteredPublicProducts={filteredPublicProducts}
-                setSelectedPharmacy={setSelectedPharmacy}
-                setSelectedProduct={setSelectedProduct}
-                setModal={setModal}
-                go={go}
-                currentLang={lang}
-                onContactProduct={openMessageModal}
-              />
-            )}
-
-            {page === 'Fiche pharmacie' && (
-              <PharmacyDetailView
-                data={publicData}
-                selectedPharmacy={selectedPharmacy}
-                setSelectedProduct={setSelectedProduct}
-                setSelectedPharmacy={setSelectedPharmacy}
-                setModal={setModal}
-                setMessageForm={setMessageForm}
-                go={go}
-                favoritePharmacyIds={favoritePharmacyIds}
-                toggleFavoritePharmacy={toggleFavoritePharmacy}
-                onContactProduct={openMessageModal}
-                currentLang={lang}
-              />
-            )}
-
-            {page === 'Tarifs' && (
-              <PricingView
-                data={publicData}
-                planPeriod={planPeriod}
-                setPlanPeriod={setPlanPeriod}
-                setExistingAccountRegistration={setExistingAccountRegistration}
-                setNewPharmacyPlan={setNewPharmacyPlan}
                 setModal={setModal}
                 say={say}
-                currentLang={lang}
-                onSelectPlan={changePlan}
                 go={go}
+                onSelectCategory={(cat) => { setCategoryFilter(cat); setAvailabilityFilter('Toutes'); go('Produits'); }}
+                healthSubPage={healthSubPage}
+                onHealthSubPageChange={setHealthSubPage}
+                currentLang={lang}
+                pharmaciesCount={publicPharmacies.length}
+                productsCount={publicProducts.length}
+                onOpenCookieSettings={() => setCookieBannerOpen(true)}
               />
-            )}
 
-            <StaticPagesView
-              page={page}
-              pharmacyForm={pharmacyForm}
-              setPharmacyForm={setPharmacyForm}
-              registerPharmacy={registerPharmacy}
-              existingAccountRegistration={existingAccountRegistration}
-              onRegistrationFilesChange={setRegistrationFiles}
-              setExistingAccountRegistration={setExistingAccountRegistration}
-              setModal={setModal}
-              say={say}
-              go={go}
-              onSelectCategory={(cat) => { setCategoryFilter(cat); setAvailabilityFilter('Toutes'); go('Produits'); }}
-              healthSubPage={healthSubPage}
-              onHealthSubPageChange={setHealthSubPage}
-              currentLang={lang}
-              pharmaciesCount={publicPharmacies.length}
-              productsCount={publicProducts.length}
-              onOpenCookieSettings={() => setCookieBannerOpen(true)}
-            />
-
-            <Footer go={go} currentLang={lang} onOpenCookieSettings={() => setCookieBannerOpen(true)} />
-          </PageTransitionStage>
-        </main>
+              <Footer go={go} currentLang={lang} onOpenCookieSettings={() => setCookieBannerOpen(true)} />
+            </PageTransitionStage>
+          </main>
         </>
       ) : (
         <div className="workspace pc-pharmacy-shell">

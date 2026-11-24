@@ -39,10 +39,9 @@ import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { ModernBrandLogoIcon, ModernDigitalStoreIcon } from '@/components/shared/ModernIcons';
 import type { HealthSubPage } from '@/components/public/pages/HealthAlertsPage';
 
-type MegaMenuKey = 'products' | 'pharmacies' | 'solutions' | 'health' | 'account';
+type MegaMenuKey = 'products' | 'pharmacies' | 'solutions' | 'health';
 type SolutionTabKey = 'industry' | 'team' | 'goal' | 'size';
 type PharmacyTabKey = 'all' | 'geo' | 'centre' | 'premium' | 'register';
-type AccountTabKey = 'onboarding' | 'security';
 
 interface HeaderProps {
   space: 'public' | 'pharmacy';
@@ -51,6 +50,7 @@ interface HeaderProps {
   setMobileNavOpen: (v: boolean) => void;
   openSpace: (s: 'public' | 'pharmacy', forceAuth?: boolean) => void;
   go: (p: string) => void;
+  adminLoggedIn?: boolean;
   pharmacyLoggedIn: boolean;
   visitorLoggedIn?: boolean;
   setModal: (m: any) => void;
@@ -158,6 +158,7 @@ export function Header({
   setMobileNavOpen,
   openSpace,
   go,
+  adminLoggedIn = false,
   pharmacyLoggedIn,
   visitorLoggedIn = false,
   setModal,
@@ -182,7 +183,6 @@ export function Header({
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuKey | null>(null);
   const [activeSolutionTab, setActiveSolutionTab] = useState<SolutionTabKey>('industry');
   const [activePharmacyTab, setActivePharmacyTab] = useState<PharmacyTabKey>('all');
-  const [activeAccountTab, setActiveAccountTab] = useState<AccountTabKey>('onboarding');
   const [caretOffset, setCaretOffset] = useState<number>(280);
 
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -191,7 +191,6 @@ export function Header({
     pharmacies: null,
     solutions: null,
     health: null,
-    account: null,
   });
 
   const updateCaretPosition = (key: MegaMenuKey) => {
@@ -687,76 +686,33 @@ export function Header({
 
   const activeSolutionItems = solutionItemsByTab[activeSolutionTab];
 
-  // --- Data for Panel 4: Portail d'Authentification & Accès Sécurisé ---
-  const accountTabs: Array<{ key: AccountTabKey; label: string; icon: React.ReactNode; locked?: boolean }> = [
-    { key: 'onboarding', label: isEn ? 'Partner Onboarding' : 'Adhésion & Agrément', icon: <ShieldCheck size={16} /> },
-    { key: 'security', label: isEn ? 'Security & Help' : 'Sécurité & Assistance', icon: <Compass size={16} /> },
-  ];
-
-  const accountItemsByTab: Record<AccountTabKey, MegaLinkItem[]> = {
-    onboarding: [
-      {
-        title: isEn ? 'Submit Pharmacy License' : 'Dépôt du dossier d’agrément',
-        desc: isEn ? 'Official pharmacy registration on PharmaConnect' : 'Enregistrement officiel de votre établissement sur PharmaConnect',
-        icon: <FileText size={18} />,
-        tone: 'mint',
-        onClick: () => navigateTo('Inscription pharmacie'),
-      },
-      {
-        title: isEn ? 'Verification & Official Badge' : 'Validation & Badge Officine Vérifiée',
-        desc: isEn ? 'Administrative review prior to public activation' : 'Contrôle administratif avant activation de votre visibilité',
-        icon: <Award size={18} />,
-        tone: 'indigo',
-        onClick: () => navigateTo('À propos'),
-      },
-      {
-        title: isEn ? 'Professional Membership' : 'Modalités d’adhésion Pro',
-        desc: isEn ? 'Subscription activation via Mobile Money' : 'Activation de l’abonnement via Mobile Money',
-        icon: <CreditCard size={18} />,
-        tone: 'blue',
-        onClick: () => navigateTo('Tarifs'),
-      },
-      {
-        title: isEn ? 'Speak with Onboarding Team' : 'Parler à un conseiller réseau',
-        desc: isEn ? 'Eligibility & multi-branch deployment inquiries' : 'Questions sur l’éligibilité et le déploiement multi-sites',
-        icon: <Users size={18} />,
-        tone: 'pink',
-        onClick: () => navigateTo('Contact'),
-      },
-    ],
-    security: [
-      {
-        title: isEn ? 'Locked Portal Access' : 'Verrouillage des espaces',
-        desc: isEn ? 'No direct access without prior verified sign-in' : 'Aucun accès direct sans authentification préalable vérifiée',
-        icon: <Lock size={18} />,
-        tone: 'violet',
-        onClick: handlePharmacySpaceClick,
-      },
-      {
-        title: isEn ? 'Account & Data Protection' : 'Protection des comptes & données',
-        desc: isEn ? 'Secured session tokens & isolated workspaces' : 'Jetons de session sécurisés et cloisonnement des espaces',
-        icon: <ShieldCheck size={18} />,
-        tone: 'mint',
-        onClick: () => navigateTo('Confidentialité'),
-      },
-      {
-        title: isEn ? 'Freshness & Quality Charter' : 'Charte de fraîcheur & Qualité',
-        desc: isEn ? 'Pharmacist commitments on live stock updates' : 'Engagements de mise à jour des stocks par les pharmaciens',
-        icon: <Clock size={18} />,
-        tone: 'blue',
-        onClick: () => navigateTo('À propos'),
-      },
-      {
-        title: isEn ? 'Report an Access Issue' : 'Signaler un problème d’accès',
-        desc: isEn ? 'Contact the PharmaConnect technical team' : 'Contacter l’équipe technique PharmaConnect',
-        icon: <MessageSquare size={18} />,
-        tone: 'pink',
-        onClick: () => navigateTo('Contact'),
-      },
-    ],
+  const handlePrimaryAuthClick = () => {
+    setActiveMegaMenu(null);
+    setMobileNavOpen(false);
+    if (adminLoggedIn) {
+      if (typeof window !== 'undefined') window.location.assign('/admin');
+      return;
+    }
+    if (pharmacyLoggedIn) {
+      openSpace('pharmacy');
+      return;
+    }
+    if (visitorLoggedIn && visitorAccount.email) {
+      setModal('visitorInbox');
+      return;
+    }
+    setPharmacyLoginError('');
+    setPharmacyLoginForm({ email: '', password: '' });
+    setModal('account');
   };
 
-  const activeAccountItems = accountItemsByTab[activeAccountTab];
+  const primaryAuthLabel = adminLoggedIn
+    ? (isEn ? 'Admin Space' : 'Espace admin')
+    : pharmacyLoggedIn
+      ? (isEn ? 'Pharmacy Space' : 'Espace pharmacie')
+      : visitorLoggedIn && visitorAccount.email
+        ? (visitorAccount.name?.split(' ')[0] || (isEn ? 'My Space' : 'Mon espace'))
+        : (isEn ? 'Sign In' : 'Se connecter');
 
   return (
     <div ref={shellRef} className={`mega-header-shell ${space === 'pharmacy' ? 'is-workspace' : ''}`}>
@@ -852,12 +808,11 @@ export function Header({
 
             <button
               type="button"
-              className={`mega-nav-trigger mega-mobile-account-link ${activeMegaMenu === 'account' ? 'is-open' : ''}`}
-              onClick={() => toggleMegaMenu('account')}
+              className="mega-nav-trigger mega-mobile-account-link"
+              onClick={handlePrimaryAuthClick}
             >
-              <span>{isEn ? 'Sign In' : 'Se connecter'}</span>
+              <span>{primaryAuthLabel}</span>
               <Lock size={13} aria-hidden="true" />
-              <ChevronDown size={14} className="mega-chevron" />
             </button>
           </nav>
         ) : space === 'pharmacy' ? (
@@ -877,33 +832,24 @@ export function Header({
           </button>
 
           {space === 'public' ? (
-            <>
-              {visitorLoggedIn && visitorAccount.email && (
-                <button
-                  type="button"
-                  className="cg-visitor-pill-btn"
-                  onClick={() => openVisitorModal('visitorInbox')}
-                  aria-label={isEn ? 'My patient space' : 'Mon espace patient'}
-                  title={visitorAccount.email}
-                >
-                  <User size={14} />
-                  <span>{visitorAccount.name?.split(' ')[0] || (isEn ? 'My space' : 'Mon espace')}</span>
-                </button>
-              )}
-              <button
-                ref={el => { triggerRefs.current.account = el; }}
-                type="button"
-                aria-expanded={activeMegaMenu === 'account'}
-                className={`cg-btn-pine cg-header-cta mega-account-trigger ${activeMegaMenu === 'account' ? 'is-open' : ''}`}
-                onClick={() => toggleMegaMenu('account')}
-                onMouseEnter={() => handleTriggerHover('account')}
-              >
+            <button
+              type="button"
+              className="cg-btn-pine cg-header-cta mega-account-trigger"
+              onClick={handlePrimaryAuthClick}
+              title={visitorLoggedIn && visitorAccount.email ? visitorAccount.email : undefined}
+            >
+              {adminLoggedIn || pharmacyLoggedIn ? (
                 <ModernDigitalStoreIcon size={15} />
-                <span>{isEn ? 'Sign In' : 'Se connecter'}</span>
-                <Lock size={13} aria-hidden="true" />
-                <ChevronDown size={14} className="mega-chevron" />
-              </button>
-            </>
+              ) : visitorLoggedIn && visitorAccount.email ? (
+                <User size={15} />
+              ) : (
+                <Lock size={14} aria-hidden="true" />
+              )}
+              <span>{primaryAuthLabel}</span>
+              {(adminLoggedIn || pharmacyLoggedIn || (visitorLoggedIn && visitorAccount.email)) && (
+                <ArrowRight size={13} aria-hidden="true" />
+              )}
+            </button>
           ) : (
             <button
               className="cg-btn-pine cg-header-cta"
@@ -1193,110 +1139,6 @@ export function Header({
                   >
                     {isEn ? 'Open Toll-Free Directory' : 'Voir les Numéros Verts'} <ArrowRight size={13} />
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeMegaMenu === 'account' && (
-            <div className="mega-sidebar-layout is-three-col">
-              <div className="mega-side-tabs">
-                {accountTabs.map(tab => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    className={`mega-side-tab ${activeAccountTab === tab.key ? 'is-active' : ''}`}
-                    onMouseEnter={() => setActiveAccountTab(tab.key)}
-                    onClick={() => setActiveAccountTab(tab.key)}
-                  >
-                    <span className="mega-side-tab-icon">{tab.icon}</span>
-                    <span>{tab.label}</span>
-                    {tab.locked && (
-                      <span className="mega-tab-lock" title={isEn ? 'Authentication required' : 'Authentification requise'}>
-                        <Lock size={11} />
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mega-main-area">
-                <div className="mega-solutions-list">
-                  {activeAccountItems.map(item => (
-                    <button
-                      key={item.title}
-                      type="button"
-                      className="mega-item-btn is-card"
-                      onClick={item.onClick}
-                    >
-                      <span className={`mega-item-icon is-tone-${item.tone || 'mint'}`}>{item.icon}</span>
-                      <span className="mega-item-text">
-                        <strong>{item.title}</strong>
-                        <small>{item.desc}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mega-featured-card">
-                <div className="mega-featured-visual">
-                  <FeaturedCubesGraphic />
-                </div>
-                <div className="mega-featured-body">
-                  <span className="mega-featured-kicker">{isEn ? 'SECURE PORTAL' : 'PORTAIL SÉCURISÉ'}</span>
-                  <h4>{isEn ? 'Authentication Required' : 'Authentification obligatoire'}</h4>
-                  <p>
-                    {isEn
-                      ? 'Direct access to spaces is locked. Please sign in to access your space.'
-                      : 'L’accès direct aux espaces est verrouillé. Identifiez-vous pour accéder à votre portail.'}
-                  </p>
-                  <div className="mega-featured-dual-actions">
-                    {pharmacyLoggedIn ? (
-                      <button
-                        type="button"
-                        className="mega-featured-cta"
-                        onClick={handlePharmacySpaceClick}
-                      >
-                        <ArrowRight size={14} />
-                        {isEn ? 'Open Pharmacy Space' : 'Ouvrir l’espace pharmacie'}
-                      </button>
-                    ) : visitorLoggedIn ? (
-                      <button
-                        type="button"
-                        className="mega-featured-cta"
-                        onClick={() => openVisitorModal('visitorInbox')}
-                      >
-                        <User size={14} />
-                        {isEn ? 'My Patient Space' : 'Mon espace patient'}
-                        <ArrowRight size={13} />
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="mega-featured-cta"
-                          onClick={() => openVisitorModal('account')}
-                        >
-                          <Lock size={14} />
-                          {isEn ? 'Sign In' : 'Se connecter'}
-                          <ArrowRight size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          className="mega-featured-secondary-cta"
-                          onClick={() => {
-                            setActiveMegaMenu(null);
-                            setMobileNavOpen(false);
-                            go('Inscription pharmacie');
-                          }}
-                        >
-                          <ModernDigitalStoreIcon size={14} />
-                          {isEn ? 'Register Pharmacy' : 'Inscrire une pharmacie'}
-                        </button>
-                      </>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>

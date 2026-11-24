@@ -267,6 +267,7 @@ export function AppModals({
     if (modal === 'message') setMessageConsent(false);
     if (modal === 'payment') setPaymentLegalAccepted(false);
     if (modal === 'account' || modal === 'pharmacyLogin') {
+      setVisitorAuthMode('login');
       setVisitorAuthError('');
       setPharmacyLoginError('');
       setVisitorRegisterAccepted(false);
@@ -315,6 +316,7 @@ export function AppModals({
           : 'visitor');
 
     if (resolvedSpace === 'admin') {
+      try { sessionStorage.setItem('pharmaconnect-admin-auth', 'true'); } catch { }
       setVisitorLoggedIn?.(false);
       setPharmacyLoggedIn(false);
       setModal(null);
